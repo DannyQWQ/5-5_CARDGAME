@@ -17,6 +17,23 @@ Each turn consists of **6 steps total**:
 - 3 steps for Player 2
 - **Order is randomized** (shown to players at turn start)
 
+
+(so the display would be like this)
+
+turn P1 P2 P2 P2 P1 P1
+     X  O  O  O  O  O
+X means current step
+
+P1 hand(cards) ? ? ? ? ?, 5hp
+
+[] [] [] [] []
+[] [] [] [] []
+[] [] [] [] []
+[] [] [] [] []
+[] [] [] [] []
+
+P2 hand(cards) ? ? ? ? ?, 5hp
+
 ### Step Actions
 On each step, a player:
 1. **Optionally** choose and use a spell/magic card from their hand (choosing ends the step)
@@ -32,10 +49,10 @@ On each step, a player:
 （ID 從 1 開始）
 
 (1) bubble tea
-<+1hp>
+<self +1hp>
 
 (2) sanshoku dango
-<+3hp>
+<self +3hp>
 
 (3) wine
 <opponent +1hp> <self +2hp>
@@ -209,5 +226,4 @@ shuffle 會破壞 "X"，同時把所有 revealed / opened 卡重新蓋住
 
 打開 figure 卡時必須更換為該 figure，除了 const figure 效果
 
-a turn contains like this P1 P1 P1 P2 P2 P2 at random order
-players will get to know what will the step of each turn will be like when that turn starts(like showing light bulb or something)
+
