@@ -266,3 +266,36 @@ OOWOO
 
 -   'Shuffle!' breaks all 'X' barriers and re-covers all revealed/opened cards on the board.
 -   Opening a 'figure' card *must* result in changing to that figure, unless 'Const Figure' is active.
+
+
+### AI instruction about how to read this file
+Okay, I can definitely help you with a structured way to read through these files to understand your game design and implementation. It's great you're reorganizing for clarity!
+
+Here's a recommended reading order, moving from high-level concepts to detailed implementation:
+
+1.  **`design_note.md`**
+    *   **Why**: This is your single source of truth for the game's rules, mechanics, and card effects. Start here to understand *what* the game is, *how* it's played, and *what each card does* before diving into the code. This document lays the conceptual foundation.
+
+2.  **`cards/__init__.py`**
+    *   **Why**: This file defines the fundamental Python classes for `MagicCard` and `FigureCard`, and importantly, it contains the `MAGIC_CARDS` and `FIGURE_CARDS` dictionaries that act as your game's card catalog. It also defines `FIGURE_EFFECTS` which shows how certain figures modify basic card interactions. Understanding these data structures is crucial before seeing them used in `player.py` or `game.py`.
+
+3.  **`cards/magic.py`**
+    *   **Why**: This file (though currently a separate, unlinked definition) is intended to hold the detailed data for your magic cards, including their effects, timings, and specific data. It's a more structured way to define the actual mechanics that `MAGIC_CARDS` in `cards/__init__.py` would eventually point to or use. Reading this will give you a deeper understanding of how each spell is supposed to function.
+    *   *(Note: Currently, `cards/__init__.py` defines `MAGIC_CARDS` directly with effects. If you intend `cards/magic.py` to be the primary source for magic card data, you'll need to integrate it into `cards/__init__.py` by importing `MAGIC_CARDS_DATA` and constructing `MagicCard` objects from it.)*
+
+4.  **`cards/figures.py`**
+    *   **Why**: This file is currently empty, but conceptually, it would mirror `cards/magic.py` by holding detailed data for your figures if you were to separate it from `cards/__init__.py`. For now, all figure data is in `cards/__init__.py`.
+
+5.  **`player.py`**
+    *   **Why**: This file defines the `Player` class. Once you understand the game rules and what "cards" are, you'll want to see how a `Player` is represented: their HP, hand, current figure, and basic actions like taking damage, healing, or using spells.
+
+6.  **`board.py`**
+    *   **Why**: This file defines the `Cell` and `Board` classes. It represents the physical play area of your game. You'll learn how individual card slots (`Cell`) are structured and how the entire 5x5 grid (`Board`) is managed, built, and displayed.
+
+7.  **`game.py`**
+    *   **Why**: This is the central orchestrator. After understanding the individual components (cards, players, board), this file brings them all together. It manages the game flow, turns, steps, applying card effects, checking win conditions, and displaying the overall state. This is where the rules from `design_note.md` are translated into high-level game logic.
+
+8.  **`main.py`**
+    *   **Why**: This is the simplest file – it's just the entry point that initializes and runs your `Game`. It's typically read last as it just kicks off the entire process.
+
+This order should help you build your understanding layer by layer, from abstract game concepts to concrete code implementation. Good luck with rebuilding your game!
