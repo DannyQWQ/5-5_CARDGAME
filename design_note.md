@@ -20,6 +20,19 @@ Each turn consists of **6 steps** total:
 - **3 steps** for Player 2.
 - **Order is randomized** at the start of each turn.
 
+### Turn-Start Resolution Order
+Resolve the start of every turn in this fixed order:
+
+1. Remove temporary Reveals and all `X` barriers left by the previous turn.
+2. Reset all once-per-turn ability usage records.
+3. Update the remaining duration of `Const Figure` protection.
+4. Each Pawn makes its 10% evolution roll.
+5. Each Politician resolves its visibility inversion. Two Politicians therefore invert the board twice and restore its original visibility.
+6. All Witch turn-start damage resolves simultaneously.
+7. Check for a winner or draw. If the game has ended, do not create any steps.
+8. Randomize and announce the six-step order.
+9. Begin the first step.
+
 **Turn Order Example:**
 ```text
 Turn: P1 P2 P2 P2 P1 P1
@@ -46,8 +59,20 @@ On each step, the active player chooses exactly one main action:
 2. **Open one face-down card** from the board. Resolve its effect, then end the step.
 
 - A player cannot play multiple Magic Cards during the same step unless a card effect explicitly says otherwise.
-- A revealed card cannot be selected again while it remains revealed.
-- A revealed card's normal open effect triggers only when it changes from face-down to revealed.
+- An Opened card cannot be selected again while it remains Opened.
+- A card's normal open effect triggers only when it changes from Face-down or Revealed to Opened.
+
+### Step-Start Resolution Order
+Resolve every step in this fixed order:
+
+1. Identify the active player.
+2. If this is that player's first step of the turn, resolve Foreteller.
+3. Resolve tic-tac-toeR placement opportunities: the active player first, then the opponent.
+4. Check whether the active player has a cursed card.
+5. If cursed, the player must resolve that card and the step ends.
+6. Otherwise, the player chooses one normal main action.
+7. If an alcoholic chooses to Open, the game randomly selects one legal card instead of allowing a manual choice.
+8. Resolve the action completely and check for a winner or draw.
 
 ### Winning Condition
 - Reduce the opponent's HP to 0 or below while keeping your own HP above 0.
@@ -77,6 +102,19 @@ On each step, the active player chooses exactly one main action:
 - **Magic**: Adds the specific Magic Card assigned to that board position to the player's hand.
 - **Figure**: Changes the player's current figure to the one opened.
 
+### Card Visibility States
+Every board card is in exactly one of these states:
+
+- **Face-down**: Its identity is hidden. It may be selected and Opened.
+- **Revealed**: Its full identity is public to both players, but its effect has not triggered. It may still be selected and Opened.
+- **Opened**: Its identity is public and its effect has already triggered. It cannot be selected again while it remains Opened.
+
+`Reveal` is public information; there is no private `Peek` action because both players share the same game screen.
+
+- Revealing a card never triggers its normal open effect.
+- Opening a Revealed card changes it from Revealed to Opened and resolves its effect normally.
+- Unless an effect says otherwise, cards Revealed by a temporary effect return to Face-down at the end of the current turn.
+
 ### Hand Rules
 - Both players begin the game with an empty hand.
 - The hand limit is **3 Magic Cards**.
@@ -86,7 +124,7 @@ On each step, the active player chooses exactly one main action:
 
 ### Shuffle
 - `Shuffle!` uses the current 25 cards; it does not generate a new board.
-- All 25 cards are turned face-down and randomly rearranged.
+- All Revealed and Opened cards are turned Face-down, then all 25 cards are randomly rearranged.
 - Each card keeps its exact identity. For example, Magic Card #17 remains Magic Card #17 after the shuffle.
 - All `X` barriers are removed.
 - Because revealed cards become face-down again, they may later be opened and trigger their effects again.
@@ -94,7 +132,7 @@ On each step, the active player chooses exactly one main action:
 ### Special Rules
 - **Modifications**: Cards with `(type) ± (amount) next turn` modify the distribution of the *next* turn's board only.
 - **Determinism**: Magic and Figure cards are assigned to specific cells when the board is generated, not randomized upon opening.
-- **W-Patterns**: Evolved figures have a "W" pattern overlay. Effects trigger when any player opens a card in a "W" position.
+- **W-Patterns**: When the active player Opens a card, check only that player's current figure pattern. The opponent's figure pattern does not react to the active player's action. Reveal never triggers a W-pattern.
 
 ### Resolving Next-Turn Board Modifications
 When multiple effects modify the next board, resolve them in this order:
@@ -140,13 +178,23 @@ Example: if `Peace!` gives `Bomb -2, Empty +2` and `THE NUKE` changes all Empty 
 14. **WHO ARE YOU?**: `Next turn: All 'Empty' become 'Figure'`
 15. **THAT'S FUN!**: `Next turn: All 'Empty' become 'Magic'`
 16. **Shuffle!**: Turns all current cards face-down, clears all 'X' barriers, and rearranges the same 25 cards. Card identities do not change.
-17. **Take a look!**: Reveal 1 chosen card.
-18. **Take 3 looks!**: Reveal 3 chosen cards.
+17. **Take a look!**: Reveal 1 chosen card until the end of the current turn. This is public and does not trigger the card.
+18. **Take 3 looks!**: Reveal 3 different chosen cards until the end of the current turn. This is public and does not trigger those cards.
 19. **the birth of BOB**: Change any player's figure to 'Bob'.
-20. **const figure**: Prevents a player's figure from changing for 3 turns.
-21. **shredder**: Discard 1 card from your hand, then choose 1 card for opponent to discard.
-22. **REVEAL!**: Reveal all 'Magic' cards on the board for this turn.
-23. **This is curse!**: Choose one magic card from each hand. They are played automatically as the first actions next turn.
+20. **const figure**: Prevents a player's figure from changing for 3 turns. The turn in which this card is played counts as the first protected turn, even if it is played during the final step of that turn. Protection expires at the start of the turn after the third protected turn.
+21. **shredder**: May be played only if you have at least 1 other Magic Card in hand and the opponent also has at least 1 Magic Card in hand. After playing Shredder, choose and discard 1 of your remaining cards, then choose and discard 1 card from the opponent's hand. If either player lacks a required card before Shredder is played, the action is invalid and Shredder remains in hand.
+22. **REVEAL!**: Reveal the full identities of all Magic Cards that have not been Opened until the end of the current turn. They may still be selected and Opened normally.
+23. **This is curse!**: Choose 1 Magic Card in the opponent's hand and mark it as cursed. The next time that opponent receives a step, they lose their normal action and must play the cursed card instead.
+    - The trigger is the cursed player's next **step**, regardless of turn boundaries. It may trigger later in the current turn if that player still has an upcoming step.
+    - The player who played `This is curse!` chooses only which opposing card is cursed.
+    - When the curse triggers, the cursed player is the card's user and makes all of its target and option choices at that time.
+    - All relative terms use the cursed player's perspective: `Self` means the cursed player and `Opponent` means the player who originally played `This is curse!`.
+    - Example: A curses B's `the birth of BOB`. On B's next step, B must play that card, but B decides which player becomes Bob.
+    - The forced card consumes B's entire step.
+    - A cursed card remains in its owner's hand but cannot be voluntarily played, discarded, or used to pay another cost before the curse triggers.
+    - `This is curse!` cannot target another copy of `This is curse!`.
+    - A player may have at most 1 cursed card at a time. A new `This is curse!` cannot target a player who already has one; the attempted action is invalid and the card remains in its user's hand.
+    - `Swap` cannot be played while either player's hand contains a cursed card.
 24. **Frog bomb**: `Next turn: Change 1 'Frog' to 'Bomb'`
 25. **Swap**: Swap hands with your opponent.
 
@@ -156,7 +204,9 @@ Example: if `Peace!` gives `Bomb -2, Empty +2` and `THE NUKE` changes all Empty 
 *(IDs start from 200)*
 
 - **200: bob**: No special ability.
-- **201: pawn**: 10% chance each turn to evolve into Queen, Rook, Bishop, or Knight.
+- **201: pawn**: At the start of each turn, roll once for a 10% chance to evolve permanently into Queen, Bishop, Knight, or Rook, chosen with equal probability.
+  - The evolved figure becomes active immediately during that turn.
+  - Pawn still rolls while protected by `Const Figure`, but a successful evolution is blocked and not saved for later. It rolls normally again next turn.
 
 ### 👑 Evolved Figures (Pawn only)
 
@@ -168,8 +218,8 @@ W W Q W W
 O W W W O
 W O W O W
 ```
-- Opponent picks 'W': -1 HP (Once/turn).
-- You pick 'W': +1 HP (Once/turn).
+- When you Open a 'W': you gain 1 HP and the opponent loses 1 HP.
+- This combined effect may trigger once per turn.
 
 **203: bishop**
 ```text
@@ -179,8 +229,8 @@ O O B O O
 O W O W O
 W O O O W
 ```
-- Opponent picks 'W': -0.5 HP.
-- You pick 'W': +0.5 HP.
+- When you Open a 'W': you gain 0.5 HP and the opponent loses 0.5 HP.
+- This combined effect may trigger once per turn.
 
 **204: knight**
 ```text
@@ -190,8 +240,8 @@ O O K O O
 W O O O W
 O W O W O
 ```
-- Opponent picks 'W': -0.5 HP.
-- You pick 'W': +0.5 HP.
+- When you Open a 'W': you gain 0.5 HP and the opponent loses 0.5 HP.
+- This combined effect may trigger once per turn.
 
 **205: rook**
 ```text
@@ -201,24 +251,39 @@ W W R W W
 O O W O O
 O O W O O
 ```
-- Opponent picks 'W': -0.5 HP.
-- You pick 'W': +0.5 HP.
+- When you Open a 'W': you gain 0.5 HP and the opponent loses 0.5 HP.
+- This combined effect may trigger once per turn.
 
 ### 🌟 Special Figures
 
-- **206: foreteller**: Reveal 3 cards at the start of your first step each turn.
+- **206: foreteller**: At the start of your first step each turn, Reveal 3 different cards until the end of that turn. This does not use the main action or trigger those cards.
 - **207: princess**: When *you* open a 'Frog', gain +1 HP (Once/turn).
 - **208: witch**: Opponent loses 1 HP at the start of each turn.
-- **209: tic-tac-toeR**: Set an 'X' barrier on a card before any step. It cannot be picked this turn.
+- **209: tic-tac-toeR**: Before every step, each player currently using tic-tac-toeR may optionally place 1 new `X` barrier. Barriers accumulate until the end of the turn, and a card with `X` cannot be Opened.
+  - `X` may be placed on a Face-down or Revealed card, but not an Opened card or a card that already has `X`.
+  - `X` prevents Open but does not prevent Reveal.
+  - All `X` barriers are removed at the end of the turn or immediately by Shuffle.
+  - Politician may change the visibility of a card without removing its `X`.
+  - An existing `X` remains until its normal removal time even if its owner changes figure.
+  - If both players are tic-tac-toeR, the active player receives the first placement opportunity, followed by the opponent.
 - **211: alcoholic**: Random card is chosen for you during 'Open a card' step.
 - **212: copy cat**: Copies the opponent's current figure once when Copy Cat takes effect. It does not continue following later changes to the opponent's figure.
-- **213: abusive lover**: All HP changes affect both players equally.
+- **213: abusive lover**: While at least one player is abusive lover, any HP change actually received by either player is mirrored once to the other player.
+  - Mirrored HP changes never trigger another mirror, so the effect cannot recurse.
+  - If both players are abusive lover, the change is still mirrored only once; it is not doubled.
+  - Mirror the amount that actually changed the original player's HP, not the amount printed on the card or ability.
+  - The original and mirrored HP changes are simultaneous. If the mirrored damage reduces both players to 0 HP or below, the game ends in a draw.
+  - Example: if a `+3 HP` effect can restore only 0.5 HP because the original player is near maximum HP, the other player is also offered only +0.5 HP, subject to their own maximum HP.
+  - For damage, resolve the original recipient's Lucky Bob or Unlucky Bob modifier first, then mirror the resulting actual HP loss.
+  - The recipient of mirrored damage does not make another Lucky Bob or Unlucky Bob roll; the mirror must remain equal to the original actual loss.
 - **214: gambler**: Open Bomb: -2 HP | Open Frog: Opponent -1 HP.
 - **215: psychopath**: Opening a Bomb deals 3 damage instead of 1.
 - **216: magician**: May 'Shuffle!' the board once per turn.
-- **217: lucky bob**: 30% chance to avoid any damage.
-- **218: unlucky bob**: 30% chance to double any damage taken.
-- **219: Politician**: At turn start, revealed cards close and closed cards reveal.
+- **217: lucky bob**: Before each separate damage event is applied, independently roll for a 30% chance to reduce that event's damage to 0. Healing does not cause a roll.
+- **218: unlucky bob**: Before each separate damage event is applied, independently roll for a 30% chance to double that event's damage. This applies to fractional damage as well.
+- **219: Politician**: At turn start, invert the board's visible truth without triggering any card: every Face-down card becomes Revealed, while every Revealed or Opened card becomes Face-down. This intentionally represents saying black is white and white is black.
+  - Cards Revealed by Politician remain Revealed until another effect changes their state; they are not automatically hidden at the end of the turn.
+  - If both players are Politician, both abilities resolve once, so the board is inverted twice and returns to its original visibility state.
 
 ---
 
