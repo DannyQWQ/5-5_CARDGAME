@@ -1,43 +1,70 @@
-# =========================
-# 👤 Player
-# =========================
+"""Player-owned state and invariants."""
+
+
 class Player:
-    def __init__(self, name, hp=5, figure_id=200):
+    HAND_LIMIT = 3
+
+    def __init__(self, name, hp=5.0, figure_id=200):
         self.name = name
-        self.hp = hp
-        self.max_hp = hp
-        self.hand = []                   # Spell cards in hand
-        self.figure_id = figure_id       # Current figure on board (default: bob #200)
-        self.steps_remaining = 0         # Steps left in current turn
+        self.hp = float(hp)
+        self.max_hp = float(hp)
+        self.hand: list[int] = []
+        self.figure_id = figure_id
+        self.figure_lock_turns = 0
+        self.used_figure_abilities: set[int] = set()
 
     def take_damage(self, damage):
-        """Reduce HP"""
-        self.hp = max(0, self.hp - damage)
+        if damage < 0:
+            raise ValueError("damage cannot be negative")
+        self.hp = max(0.0, self.hp - damage)
         return self.hp
 
     def heal(self, amount):
-        """Increase HP"""
+        if amount < 0:
+            raise ValueError("healing cannot be negative")
         self.hp = min(self.max_hp, self.hp + amount)
         return self.hp
 
-    def add_spell_to_hand(self, spell_id):
-        """Add spell card to hand"""
-        self.hand.append(spell_id)
+    def receive_magic(self, card_id, discard_indices=()):
+        """Receive a card, enforcing the mandatory two-card discard at capacity."""
+        if len(self.hand) < self.HAND_LIMIT:
+            if discard_indices:
+                raise ValueError("discarding is only allowed when the hand is full")
+            self.hand.append(card_id)
+            return []
 
-    def use_spell(self, spell_id):
-        """Use spell from hand (removes it)"""
-        if spell_id in self.hand:
-            self.hand.remove(spell_id)
-            return True
-        return False
+        indices = tuple(discard_indices)
+        if len(indices) != 2 or len(set(indices)) != 2:
+            raise ValueError("a full hand must discard exactly two different cards")
+        if any(index < 0 or index >= len(self.hand) for index in indices):
+            raise IndexError("discard index is outside the hand")
+
+        discarded = [self.hand[index] for index in indices]
+        for index in sorted(indices, reverse=True):
+            self.hand.pop(index)
+        self.hand.append(card_id)
+        return discarded
+
+    def use_magic_at(self, index):
+        if not 0 <= index < len(self.hand):
+            raise IndexError("magic card index is outside the hand")
+        return self.hand.pop(index)
 
     def change_figure(self, new_figure_id):
-        """Change current figure"""
+        if self.figure_lock_turns > 0:
+            return False
         self.figure_id = new_figure_id
+        return True
+
+    def reset_turn_usage(self):
+        self.used_figure_abilities.clear()
+
+    def advance_figure_lock(self):
+        if self.figure_lock_turns > 0:
+            self.figure_lock_turns -= 1
 
     def is_alive(self):
-        """Check if player is still alive"""
         return self.hp > 0
 
     def __repr__(self):
-        return f"Player({self.name}, HP={self.hp}/{self.max_hp}, Figure=#{self.figure_id}, Hand={len(self.hand)} spells)"
+        return f"Player({self.name}, HP={self.hp:.1f}/{self.max_hp:.1f}, Figure=#{self.figure_id}, Hand={len(self.hand)})"

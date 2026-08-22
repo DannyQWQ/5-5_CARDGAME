@@ -1,111 +1,124 @@
+"""Board state and board-only operations.
+
+The board knows which physical cards exist and whether they are revealed. It does
+not apply damage, healing, hand rules, or figure abilities.
+"""
+
+from dataclasses import dataclass
 import random
 
-# =========================
-# 🧩 Cell (Individual card on board)
-# =========================
+from cards import DRAWABLE_FIGURE_IDS, MAGIC_CARDS
+
+
+CARD_TYPES = ("bomb", "frog", "empty", "magic", "figure")
+BOARD_SIZE = 25
+
+
+@dataclass(slots=True)
 class Cell:
-    def __init__(self, card_type, cell_id):
-        self.type = card_type          # "bomb", "frog", "empty", "magic", "figure"
-        self.id = cell_id
-        self.is_open = False            # Has this cell been revealed?
-        self.owner = None               # Future: track who opened it
-        self.effect = None              # Extra effects/buffs
+    card_type: str
+    cell_id: int
+    card_id: int | None = None
+    is_open: bool = False
+    barrier: bool = False
 
-    def __repr__(self):
-        return f"Cell(type={self.type}, id={self.id}, open={self.is_open})"
+    @property
+    def type(self) -> str:
+        """Compatibility alias for older callers."""
+        return self.card_type
 
 
-# =========================
-# 🧱 Board (5x5 grid)
-# =========================
 class Board:
-    # Default card distribution
     DEFAULT_DISTRIBUTION = {
         "bomb": 5,
         "frog": 5,
         "empty": 8,
         "magic": 5,
-        "figure": 2
+        "figure": 2,
     }
 
-    def __init__(self, distribution=None):
-        if distribution is None:
-            distribution = self.DEFAULT_DISTRIBUTION
-
-        self.distribution = distribution
+    def __init__(self, distribution=None, *, rng=None):
+        self.rng = rng or random.Random()
+        self.distribution = dict(distribution or self.DEFAULT_DISTRIBUTION)
+        self._validate_distribution(self.distribution)
         self.cells = self._build_board()
 
+    @staticmethod
+    def _validate_distribution(distribution):
+        if set(distribution) != set(CARD_TYPES):
+            raise ValueError(f"distribution must contain exactly: {', '.join(CARD_TYPES)}")
+        if any(type(count) is not int or count < 0 for count in distribution.values()):
+            raise ValueError("all distribution counts must be non-negative integers")
+        if sum(distribution.values()) != BOARD_SIZE:
+            raise ValueError(f"distribution must contain exactly {BOARD_SIZE} cards")
+
     def _build_board(self):
-        """Create shuffled 5x5 board with cards"""
-        # Create card list based on distribution
         cards = []
-        for card_type, count in self.distribution.items():
-            cards.extend([card_type] * count)
+        for card_type in CARD_TYPES:
+            cards.extend([card_type] * self.distribution[card_type])
+        self.rng.shuffle(cards)
 
-        random.shuffle(cards)
-
-        # Create cells
         cells = []
-        for i, card_type in enumerate(cards):
-            cells.append(Cell(card_type, i))
-
+        for cell_id, card_type in enumerate(cards):
+            card_id = None
+            if card_type == "magic":
+                card_id = self.rng.choice(tuple(MAGIC_CARDS))
+            elif card_type == "figure":
+                card_id = self.rng.choice(DRAWABLE_FIGURE_IDS)
+            cells.append(Cell(card_type, cell_id, card_id))
         return cells
 
     def get_cell(self, index):
-        """Get cell at index (0-24)"""
-        if 0 <= index < 25:
-            return self.cells[index]
-        return None
+        return self.cells[index] if 0 <= index < len(self.cells) else None
 
     def get_cell_by_coords(self, row, col):
-        """Get cell by row/col coordinates (0-4)"""
-        if 0 <= row < 5 and 0 <= col < 5:
-            index = row * 5 + col
-            return self.cells[index]
-        return None
+        if not (0 <= row < 5 and 0 <= col < 5):
+            return None
+        return self.cells[row * 5 + col]
 
     def open_cell(self, index):
-        """Reveal a cell (returns None if already open)"""
         cell = self.get_cell(index)
-        if not cell:
-            return None
+        if cell is None:
+            raise IndexError("card index must be between 0 and 24")
+        if cell.barrier:
+            raise ValueError("that card is protected by an X barrier")
         if cell.is_open:
-            return False  # Already opened
+            raise ValueError("that card is already open")
         cell.is_open = True
         return cell
 
+    def peek_cell(self, index):
+        cell = self.get_cell(index)
+        if cell is None:
+            raise IndexError("card index must be between 0 and 24")
+        return cell
+
     def shuffle(self):
-        """Reshuffle the board (closes all cards)"""
-        random.shuffle(self.cells)
-        for cell in self.cells:
+        """Close and rearrange the same physical cards and clear barriers."""
+        before = sorted((cell.card_type, cell.card_id) for cell in self.cells)
+        self.rng.shuffle(self.cells)
+        for new_id, cell in enumerate(self.cells):
+            cell.cell_id = new_id
             cell.is_open = False
+            cell.barrier = False
+        assert before == sorted((cell.card_type, cell.card_id) for cell in self.cells)
 
     def display_player_view(self):
-        """Show board as player sees it (unopened = [], opened = type icon)"""
-        type_icons = {
-            "bomb": "💣",
-            "frog": "🐸",
-            "empty": "⭕",
-            "magic": "✨",
-            "figure": "👤"
-        }
-
-        for i in range(5):
-            for j in range(5):
-                index = i * 5 + j
+        icons = {"bomb": "B", "frog": "F", "empty": "O", "magic": "M", "figure": "C"}
+        for row in range(5):
+            rendered = []
+            for col in range(5):
+                index = row * 5 + col
                 cell = self.cells[index]
-                if not cell.is_open:
-                    print(f"[{index:2d}]", end=" ")
-                else:
-                    icon = type_icons.get(cell.type, "?")
-                    print(f" {icon} ", end=" ")
-            print()
+                rendered.append(f" {icons[cell.card_type]} " if cell.is_open else f"[{index:2d}]")
+            print(" ".join(rendered))
 
     def display_debug_view(self):
-        """Show all cards (for debugging)"""
-        for i in range(5):
-            for j in range(5):
-                cell = self.cells[i * 5 + j]
-                status = "X" if cell.is_open else " "
-                print(f"{cell.type[0]}{status}({cell.id})", end=" ")
-            print()
+        for row in range(5):
+            rendered = []
+            for col in range(5):
+                cell = self.cells[row * 5 + col]
+                identity = f"#{cell.card_id}" if cell.card_id is not None else ""
+                state = "open" if cell.is_open else "closed"
+                rendered.append(f"{cell.card_type}{identity}:{state}")
+            print(" | ".join(rendered))

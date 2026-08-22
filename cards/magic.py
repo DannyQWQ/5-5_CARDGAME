@@ -1,222 +1,51 @@
-MAGIC_CARDS_DATA = {
-    1: {
-        "name": "bubble tea",
-        "effect": {
-            "timing": "instant",
-            "type": "heal",
-            "data": {"user": 1}
-        }
-    },
+"""Canonical Magic Card definitions; effect execution belongs to ``game.Game``."""
 
-    2: {
-        "name": "sanshoku dango",
-        "effect": {
-            "timing": "instant",
-            "type": "heal",
-            "data": {"user": 3}
-        }
-    },
+from dataclasses import dataclass, field
+from types import MappingProxyType
+from typing import Any, Mapping
 
-    3: {
-        "name": "wine",
-        "effect": {
-            "timing": "instant",
-            "type": "heal_dual",
-            "data": {"user": 2, "opponent": 1}
-        }
-    },
 
-    4: {
-        "name": "beep",
-        "effect": {
-            "timing": "next_turn",
-            "type": "table_status_change",
-            "data": {"bomb": 1, "empty": -1}
-        }
-    },
+@dataclass(frozen=True, slots=True)
+class MagicCard:
+    card_id: int
+    name: str
+    description: str
+    effect_type: str
+    effect_data: Mapping[str, Any] = field(default_factory=dict)
 
-    5: {
-        "name": "beep boom",
-        "effect": {
-            "timing": "next_turn",
-            "type": "table_status_change",
-            "data": {"bomb": 2, "empty": -2}
-        }
-    },
+    @property
+    def type(self) -> str:
+        return "magic"
 
-    6: {
-        "name": "let's be nice",
-        "effect": {
-            "timing": "next_turn",
-            "type": "table_status_change",
-            "data": {"bomb": -1, "empty": 1}
-        }
-    },
 
-    7: {
-        "name": "peace!",
-        "effect": {
-            "timing": "next_turn",
-            "type": "table_status_change",
-            "data": {"bomb": -2, "empty": 2}
-        }
-    },
+def _card(card_id, name, description, effect_type, **effect_data):
+    return MagicCard(card_id, name, description, effect_type, MappingProxyType(effect_data))
 
-    8: {
-        "name": "one more please",
-        "effect": {
-            "timing": "next_turn",
-            "type": "table_status_change",
-            "data": {"magic": 1, "empty": -1}
-        }
-    },
 
-    9: {
-        "name": "becoming tricky!",
-        "effect": {
-            "timing": "next_turn",
-            "type": "table_status_change",
-            "data": {"magic": 2, "empty": -2}
-        }
-    },
-
-    10: {
-        "name": "\"CARD\"iovascular",
-        "effects": [
-            {
-                "timing": "next_turn",
-                "type": "table_status_change",
-                "data": {"magic": -2, "empty": 2}
-            },
-            {
-                "timing": "instant",
-                "type": "heal",
-                "data": {"user": 2}
-            }
-        ]
-    },
-
-    11: {
-        "name": "Ribbit! Ribbit! Ribbit!",
-        "effect": {
-            "timing": "next_turn",
-            "type": "table_status_change",
-            "data": {"frog": 3, "empty": -3}
-        }
-    },
-
-    12: {
-        "name": "THE NUKE",
-        "effect": {
-            "timing": "next_turn",
-            "type": "replace_all",
-            "data": {"from": "empty", "to": "bomb"}
-        }
-    },
-
-    13: {
-        "name": "It's raining FROGS and FROGS",
-        "effect": {
-            "timing": "next_turn",
-            "type": "replace_all",
-            "data": {"from": "empty", "to": "frog"}
-        }
-    },
-
-    14: {
-        "name": "Who is this?",
-        "effect": {
-            "timing": "next_turn",
-            "type": "replace_all",
-            "data": {"from": "empty", "to": "figure"}
-        }
-    },
-
-    15: {
-        "name": "HarRy PotTEr?",
-        "effect": {
-            "timing": "next_turn",
-            "type": "replace_all",
-            "data": {"from": "empty", "to": "magic"}
-        }
-    },
-
-    16: {
-        "name": "Shuffle!",
-        "effect": {
-            "timing": "instant",
-            "type": "shuffle"
-        }
-    },
-
-    17: {
-        "name": "Take a LooK",
-        "effect": {
-            "timing": "instant",
-            "type": "reveal",
-            "data": {"count": 1}
-        }
-    },
-
-    18: {
-        "name": "Take a and b and c LooK",
-        "effect": {
-            "timing": "instant",
-            "type": "reveal",
-            "data": {"count": 3}
-        }
-    },
-
-    19: {
-        "name": "the birth of BOB",
-        "effect": {
-            "timing": "instant",
-            "type": "figure_change",
-            "data": {"target": "opponent", "figure_id": 200}
-        }
-    },
-
-    20: {
-        "name": "const FIGURE",
-        "effect": {
-            "timing": "duration",
-            "type": "lock_figure",
-            "data": {"turns": 12}
-        }
-    },
-
-    21: {
-        "name": "shredder",
-        "effect": {
-            "timing": "instant",
-            "type": "discard_hand",
-            "data": {"user": 1, "opponent": 1}
-        }
-    },
-
-    22: {
-        "name": "REVEAL!",
-        "effect": {
-            "timing": "instant",
-            "type": "reveal",
-            "data": {"count": 25}
-        }
-    },
-
-    24: {
-        "name": "Frog bomb",
-        "effect": {
-            "timing": "next_turn",
-            "type": "combo_trigger",
-            "data": {"trigger": "frog", "also": "bomb"}
-        }
-    },
-
-    25: {
-        "name": "SWAP!",
-        "effect": {
-            "timing": "instant",
-            "type": "swap_hand"
-        }
-    }
+MAGIC_CARDS = {
+    1: _card(1, "bubble tea", "Self: +1 HP", "heal", user=1),
+    2: _card(2, "sanshoku dango", "Self: +3 HP", "heal", user=3),
+    3: _card(3, "wine", "Opponent: +1 HP; self: +2 HP", "heal_dual", user=2, opponent=1),
+    4: _card(4, "beep", "Next turn: Bomb +1, Empty -1", "board_delta", bomb=1, empty=-1),
+    5: _card(5, "beep boom", "Next turn: Bomb +2, Empty -2", "board_delta", bomb=2, empty=-2),
+    6: _card(6, "let's be nice", "Next turn: Bomb -1, Empty +1", "board_delta", bomb=-1, empty=1),
+    7: _card(7, "peace!", "Next turn: Bomb -2, Empty +2", "board_delta", bomb=-2, empty=2),
+    8: _card(8, "one more please", "Next turn: Magic +1, Empty -1", "board_delta", magic=1, empty=-1),
+    9: _card(9, "becoming tricky!", "Next turn: Magic +2, Empty -2", "board_delta", magic=2, empty=-2),
+    10: _card(10, '"CARD"iovascular', "Next turn: Magic -2, Empty +2; self: +2 HP", "heal_and_board_delta", user=2, magic=-2, empty=2),
+    11: _card(11, "Ribbit! Ribbit! Ribbit!", "Next turn: Frog +3, Empty -3", "board_delta", frog=3, empty=-3),
+    12: _card(12, "THE NUKE", "Next turn: all Empty become Bomb", "convert_all", source="empty", target="bomb"),
+    13: _card(13, "IT'S RAINING FROGS AND FROGS", "Next turn: all Empty become Frog", "convert_all", source="empty", target="frog"),
+    14: _card(14, "WHO ARE YOU?", "Next turn: all Empty become Figure", "convert_all", source="empty", target="figure"),
+    15: _card(15, "THAT'S FUN!", "Next turn: all Empty become Magic", "convert_all", source="empty", target="magic"),
+    16: _card(16, "Shuffle!", "Shuffle the same 25 cards", "shuffle"),
+    17: _card(17, "Take a look!", "Reveal 1 chosen card", "reveal", count=1),
+    18: _card(18, "Take 3 looks!", "Reveal 3 chosen cards", "reveal", count=3),
+    19: _card(19, "the birth of BOB", "Change either player's figure to Bob", "change_figure", figure_id=200),
+    20: _card(20, "const figure", "Prevent figure changes for 3 turns", "protect_figure", turns=3),
+    21: _card(21, "shredder", "Both players discard 1 chosen card", "discard"),
+    22: _card(22, "REVEAL!", "Reveal all Magic Cards this turn", "reveal_all_magic"),
+    23: _card(23, "This is curse!", "Queue one card from each hand for next turn", "curse"),
+    24: _card(24, "Frog bomb", "Next turn: change 1 Frog to Bomb", "convert_one", source="frog", target="bomb"),
+    25: _card(25, "Swap", "Swap hands with opponent", "swap_hand"),
 }

@@ -249,9 +249,14 @@ O O W O O
 ---
 
 ## 🛠️ Project Structure
-1. **`design_note.md`**: Game rules and card effects.
-2. **`cards/__init__.py`**: Definition of `MagicCard` and `FigureCard` classes and catalogs.
-3. **`player.py`**: Player state (HP, hand, figure).
-4. **`board.py`**: 5x5 grid management.
-5. **`game.py`**: Game logic and turn orchestration.
-6. **`main.py`**: Entry point.
+The design document is the source of truth. Code and card data must be changed to match this document, not the other way around.
+
+1. **`design_note.md`**: Canonical game rules and card descriptions.
+2. **`cards/magic.py`**: Immutable Magic Card definitions only; it does not execute effects.
+3. **`cards/figures.py`**: Immutable Figure definitions and which figures may appear on the board.
+4. **`cards/__init__.py`**: Public imports for the two canonical card catalogs; it contains no duplicate catalog.
+5. **`player.py`**: Player-owned state and invariants, including HP, the 3-card hand limit, mandatory discards, current figure, locks, and once-per-turn usage records.
+6. **`board.py`**: The 25 physical board cards, their pre-assigned identities, revealed state, barriers, peeking, and shuffling. It never applies HP or hand effects.
+7. **`game.py`**: Turn order, action validation, card and figure effect resolution, next-turn board modifications, and win/draw resolution. Its terminal methods are only an input/output adapter around the rule methods.
+8. **`main.py`**: Minimal terminal entry point.
+9. **`tests/test_core.py`**: Executable checks for the agreed core rules and module invariants.
