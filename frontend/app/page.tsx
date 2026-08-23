@@ -48,7 +48,8 @@ async function request(path: string, body?: object): Promise<GameState> {
 }
 
 function MiniCard({ card, selected, disabled, onClick }: { card: HandCard; selected: boolean; disabled?: boolean; onClick: () => void }) {
-  return <button title={card.name} className={`card-frame mini-card ${selected ? 'selected' : ''} ${card.cursed ? 'cursed' : ''}`} disabled={disabled} onClick={onClick}><span>M</span><b>{card.name}</b><small>#{String(card.id).padStart(3, '0')}{card.cursed ? ' · CURSED' : ' · MAGIC'}</small></button>;
+  const art = artwork('magic', card.id);
+  return <button title={card.name} className={`card-frame mini-card ${selected ? 'selected' : ''} ${card.cursed ? 'cursed' : ''}`} style={art ? { backgroundImage: `linear-gradient(#10181588,#101815dd), url(${art})` } : undefined} disabled={disabled} onClick={onClick}><span>M</span><b>{card.name}</b><small>#{String(card.id).padStart(3, '0')}{card.cursed ? ' · CURSED' : ' · MAGIC'}</small></button>;
 }
 
 function PlayerStrip({ player, active, selection, forcedIndex, onCard, onFigure }: { player: Player; active: boolean; selection: Selection | null; forcedIndex: number | null; onCard: (index: number) => void; onFigure: () => void }) {
@@ -63,7 +64,8 @@ function PlayerStrip({ player, active, selection, forcedIndex, onCard, onFigure 
 
 function BoardCard({ card, selected, target, onClick }: { card: BoardCell; selected: boolean; target: boolean; onClick: () => void }) {
   const hidden = card.visibility === 'face_down'; const kind = card.kind ?? 'unknown';
-  return <button className={`card-frame board-card ${card.visibility.replace('_', '-')} kind-${kind} ${selected ? 'selected' : ''} ${target ? 'targeted' : ''}`} onClick={onClick}>
+  const art = artwork(hidden ? 'unknown' : kind, card.id);
+  return <button className={`card-frame board-card ${card.visibility.replace('_', '-')} kind-${kind} ${selected ? 'selected' : ''} ${target ? 'targeted' : ''}`} style={art ? { backgroundImage: `linear-gradient(#07100c33,#07100c99), url(${art})` } : undefined} onClick={onClick}>
     <span className="card-index">{String(card.index).padStart(2, '0')}</span>{card.barrier && <span className="barrier">X</span>}
     {hidden ? <><span className="back-mark">5×5</span><small>UNKNOWN</small></> : <><span className="kind-mark">{kindMark[kind]}</span><strong>{card.name}</strong><small>{card.visibility.toUpperCase()}</small></>}
   </button>;
