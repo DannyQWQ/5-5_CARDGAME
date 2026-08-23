@@ -127,6 +127,14 @@ class EffectEngine:
             for index in indices:
                 if self.game.board._require_cell(index).visibility is not Visibility.FACE_DOWN:
                     raise ValueError("Reveal targets must be Face-down")
+        elif card.effect_type == "reveal_line":
+            axis = choices.get("axis")
+            line = choices.get("line")
+            if axis not in {"row", "column"} or type(line) is not int or not 0 <= line < 5:
+                raise ValueError("Take a look! requires one row or column from 0 to 4")
+            indices = self._line_indices(axis, line)
+            if not any(self.game.board.cells[index].visibility is Visibility.FACE_DOWN for index in indices):
+                raise ValueError("that line has no face-down cards to Reveal")
         elif card.effect_type in {"change_figure", "protect_figure"}:
             if choices.get("target") not in self.game.players:
                 raise ValueError("this card requires a valid target player")
@@ -159,6 +167,8 @@ class EffectEngine:
         if card.effect_type == "reveal":
             available = sum(c.visibility is Visibility.FACE_DOWN for c in self.game.board.cells)
             return available >= card.effect_data["count"]
+        if card.effect_type == "reveal_line":
+            return any(cell.visibility is Visibility.FACE_DOWN for cell in self.game.board.cells)
         if card.effect_type == "discard":
             own = any(c is not hand_card and not c.cursed for c in player.hand)
             theirs = any(not c.cursed for c in opponent.hand)
@@ -199,6 +209,12 @@ class EffectEngine:
             self.game.board.shuffle()
         elif card.effect_type == "reveal":
             self.game.board.reveal(choices["indices"])
+        elif card.effect_type == "reveal_line":
+            indices = [
+                index for index in self._line_indices(choices["axis"], choices["line"])
+                if self.game.board.cells[index].visibility is Visibility.FACE_DOWN
+            ]
+            self.game.board.reveal(indices)
         elif card.effect_type == "reveal_all_magic":
             self.game.board.reveal_all_magic()
         elif card.effect_type == "change_figure":
@@ -222,6 +238,10 @@ class EffectEngine:
         player.used_figure_abilities.add(216)
         self.game.board.shuffle()
         return [f"{player.name} uses Magician Shuffle"]
+
+    @staticmethod
+    def _line_indices(axis, line):
+        return tuple(line * 5 + offset for offset in range(5)) if axis == "row" else tuple(offset * 5 + line for offset in range(5))
 
     def resolve_turn_start_figures(self):
         messages = []

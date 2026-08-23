@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import socket
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse
@@ -43,10 +44,23 @@ class GameAPI:
                 return self.session.play_magic(payload.get("hand_index"), payload.get("choices"))
             if method == "POST" and path == "/api/activate-figure":
                 return self.session.activate_figure()
+            if method == "POST" and path == "/api/continue-turn":
+                return self.session.continue_turn()
             raise WebGameError("unknown API route", code="not_found")
 
 
 API = GameAPI()
+
+
+class ExclusiveThreadingHTTPServer(ThreadingHTTPServer):
+    """Fail fast instead of letting two game cores share port 8000 on Windows."""
+
+    allow_reuse_address = False
+
+    def server_bind(self):
+        if hasattr(socket, "SO_EXCLUSIVEADDRUSE"):
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        super().server_bind()
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -110,7 +124,7 @@ def main():
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", default=8000, type=int)
     args = parser.parse_args()
-    server = ThreadingHTTPServer((args.host, args.port), Handler)
+    server = ExclusiveThreadingHTTPServer((args.host, args.port), Handler)
     print(f"Five by Five API: http://{args.host}:{args.port}/api/health")
     try:
         server.serve_forever()
@@ -122,4 +136,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

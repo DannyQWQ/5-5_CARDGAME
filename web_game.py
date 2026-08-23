@@ -55,7 +55,7 @@ class WebGameSession:
 
     @property
     def current_player(self):
-        if self.game.game_result() is not None or not self.game.steps_order:
+        if self.game.game_result() is not None or not self.game.steps_order or self.game.current_step >= len(self.game.steps_order):
             return None
         return self.game.steps_order[self.game.current_step]
 
@@ -93,7 +93,7 @@ class WebGameSession:
         if forced_index is None or self.game.can_resolve_forced_magic(player, forced_index):
             return
         self._record(self.game.fizzle_forced_magic(player, forced_index))
-        self._finish_step()
+        self._finish_step(player)
 
     def begin_step(self, *, foreteller_indices=(), barrier_indices=None):
         if self.phase != "step_start":
@@ -135,7 +135,7 @@ class WebGameSession:
             raise
         except (IndexError, ValueError) as error:
             raise WebGameError(str(error)) from error
-        self._finish_step()
+        self._finish_step(player)
         return self.state()
 
     def play_magic(self, hand_index, choices=None):
@@ -152,7 +152,7 @@ class WebGameSession:
             self._record(self.game.play_magic(player, hand_index, normalized, forced=forced))
         except (IndexError, ValueError, TypeError) as error:
             raise WebGameError(str(error)) from error
-        self._finish_step()
+        self._finish_step(player)
         return self.state()
 
     def activate_figure(self):
@@ -164,15 +164,21 @@ class WebGameSession:
             self._record(self.game.activate_figure(player))
         except ValueError as error:
             raise WebGameError(str(error)) from error
-        self._finish_step()
+        self._finish_step(player)
+        return self.state()
+
+    def continue_turn(self):
+        if self.phase != "turn_end":
+            raise WebGameError("the current turn is not waiting to continue")
+        self._record(self.game.start_turn())
+        self._prepare_current_step()
         return self.state()
 
     def _require_action_phase(self):
         if self.phase != "action" or self.current_player is None:
             raise WebGameError("the game is not waiting for a main action")
 
-    def _finish_step(self):
-        player = self.current_player
+    def _finish_step(self, player):
         self.game.complete_step(player)
         result = self.game.game_result()
         if result is not None:
@@ -180,7 +186,10 @@ class WebGameSession:
             self.log.append("The game ends in a draw." if result == "draw" else f"{result} wins.")
             return
         if self.game.current_step >= len(self.game.steps_order):
-            self._record(self.game.start_turn())
+            self.phase = "turn_end"
+            self.step_start = StepStartRequirement()
+            self.log.append(f"Turn {self.game.turn_number} is complete. Review the final board before continuing.")
+            return
         self._prepare_current_step()
 
     def state(self):
@@ -259,4 +268,3 @@ class WebGameSession:
             }
             data.update(name=cell.card_type.title(), description=descriptions[cell.card_type])
         return data
-

@@ -74,6 +74,8 @@ Resolve every step in this fixed order:
 7. If an alcoholic chooses to Open, the game randomly selects one legal card instead of allowing a manual choice.
 8. Resolve the action completely and check for a winner or draw.
 
+After the sixth step, keep the final board and action result visible. The players explicitly continue only after they have reviewed that state; the next turn's board generation must not immediately cover the sixth step's outcome.
+
 ### Winning Condition
 - Reduce the opponent's HP to 0 or below while keeping your own HP above 0.
 - Simultaneous defeat caused by one indivisible effect is a draw.
@@ -178,7 +180,7 @@ Example: if `Peace!` gives `Bomb -2, Empty +2` and `THE NUKE` changes all Empty 
 14. **WHO ARE YOU?**: `Next turn: All 'Empty' become 'Figure'`
 15. **THAT'S FUN!**: `Next turn: All 'Empty' become 'Magic'`
 16. **Shuffle!**: Turns all current cards face-down, clears all 'X' barriers, and rearranges the same 25 cards. Card identities do not change.
-17. **Take a look!**: Reveal 1 chosen card until the end of the current turn. This is public and does not trigger the card.
+17. **Take a look!**: Choose 1 row or 1 column. Reveal every Face-down card in that line until the end of the current turn. Cards already Revealed or Opened remain unchanged. This is public and does not trigger any card.
 18. **Take 3 looks!**: Reveal 3 different chosen cards until the end of the current turn. This is public and does not trigger those cards.
 19. **the birth of BOB**: Change any player's figure to 'Bob'.
 20. **const figure**: Prevents a player's figure from changing for 3 turns. The turn in which this card is played counts as the first protected turn, even if it is played during the final step of that turn. Protection expires at the start of the turn after the third protected turn.

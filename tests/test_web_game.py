@@ -46,7 +46,31 @@ class WebGameSessionTests(unittest.TestCase):
         self.session.play_magic(0, {"target": self.session._player_id(opponent)})
         self.assertEqual(200, opponent.figure_id)
 
+    def test_sixth_step_waits_for_review_before_generating_next_board(self):
+        self.session.game.board.cells = [Cell("empty", index) for index in range(25)]
+        for _ in range(6):
+            index = self.session.game.board.selectable_indices()[0]
+            self.session.open_card(index)
+        self.assertEqual("turn_end", self.session.phase)
+        self.assertEqual(1, self.session.game.turn_number)
+        self.assertEqual(6, self.session.game.current_step)
+        opened_before = sum(cell.is_open for cell in self.session.game.board.cells)
+        self.assertEqual(6, opened_before)
+
+        self.session.continue_turn()
+        self.assertEqual(2, self.session.game.turn_number)
+        self.assertEqual(0, self.session.game.current_step)
+        self.assertEqual(0, sum(cell.is_open for cell in self.session.game.board.cells))
+
+    def test_lethal_action_enters_game_over_for_victory_overlay(self):
+        loser = self.session.current_player
+        winner = self.session.game.get_other_player(loser)
+        loser.hp = 1
+        self.session.game.board.cells[0] = Cell("bomb", 0)
+        state = self.session.open_card(0)
+        self.assertEqual("game_over", state["phase"])
+        self.assertEqual(winner.name, state["result"])
+
 
 if __name__ == "__main__":
     unittest.main()
-

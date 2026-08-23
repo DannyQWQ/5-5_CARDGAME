@@ -15,12 +15,22 @@ class EffectTests(unittest.TestCase):
         self.game.open_card(self.game.p1, 0)
         self.assertEqual([17], self.game.p1.hand_ids)
 
-    def test_take_a_look_reveals_without_opening(self):
+    def test_take_a_look_reveals_an_unopened_row_without_triggering(self):
         self.game.p1.hand = [HandCard(17)]
-        self.game.play_magic(self.game.p1, 0, {"indices": (0,)})
-        self.assertEqual(Visibility.REVEALED, self.game.board.cells[0].visibility)
+        self.game.board.cells[2].visibility = Visibility.OPENED
+        self.game.play_magic(self.game.p1, 0, {"axis": "row", "line": 0})
+        self.assertTrue(all(self.game.board.cells[index].visibility is Visibility.REVEALED for index in (0, 1, 3, 4)))
+        self.assertEqual(Visibility.OPENED, self.game.board.cells[2].visibility)
         self.game.open_card(self.game.p1, 0)
         self.assertEqual(Visibility.OPENED, self.game.board.cells[0].visibility)
+
+    def test_take_a_look_preserves_an_existing_permanent_reveal(self):
+        self.game.p1.hand = [HandCard(17)]
+        self.game.board.cells[0].visibility = Visibility.REVEALED
+        self.game.board.cells[0].temporary_reveal = False
+        self.game.play_magic(self.game.p1, 0, {"axis": "column", "line": 0})
+        self.game.board.clear_temporary_reveals()
+        self.assertEqual(Visibility.REVEALED, self.game.board.cells[0].visibility)
 
     def test_reveal_all_magic_only_reveals_unopened_magic(self):
         self.game.p1.hand = [HandCard(22)]

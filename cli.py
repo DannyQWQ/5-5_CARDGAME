@@ -110,6 +110,12 @@ class TerminalGame:
         choices = {}
         if card.effect_type == "reveal":
             choices["indices"] = self._read_indices(f"Choose exactly {card.effect_data['count']} Face-down board indices: ")
+        elif card.effect_type == "reveal_line":
+            axis = input("Reveal a row or column? (r/c): ").strip().lower()
+            if axis not in {"r", "c"}:
+                raise ValueError("axis must be 'r' or 'c'")
+            choices["axis"] = "row" if axis == "r" else "column"
+            choices["line"] = int(input("Line number (0-4): "))
         elif card.effect_type in {"change_figure", "protect_figure"}:
             choices["target"] = self._choose_player(player)
         elif card.effect_type == "discard":

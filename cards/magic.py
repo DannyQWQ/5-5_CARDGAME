@@ -39,7 +39,7 @@ MAGIC_CARDS = {
     14: _card(14, "WHO ARE YOU?", "Next turn: all Empty become Figure", "convert_all", source="empty", target="figure"),
     15: _card(15, "THAT'S FUN!", "Next turn: all Empty become Magic", "convert_all", source="empty", target="magic"),
     16: _card(16, "Shuffle!", "Shuffle the same 25 cards", "shuffle"),
-    17: _card(17, "Take a look!", "Reveal 1 chosen card", "reveal", count=1),
+    17: _card(17, "Take a look!", "Choose 1 row or column; Reveal every face-down card in that line", "reveal_line"),
     18: _card(18, "Take 3 looks!", "Reveal 3 chosen cards", "reveal", count=3),
     19: _card(19, "the birth of BOB", "Change either player's figure to Bob", "change_figure", figure_id=200),
     20: _card(20, "const figure", "Prevent figure changes for 3 turns", "protect_figure", turns=3),
