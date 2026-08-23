@@ -17,7 +17,10 @@ The tests currently cover:
 - safe failure before mutating board or hand state;
 - numerical modifications before conversions;
 - conversion ordering;
-- Const Figure and Copy Cat basics;
+- three-state visibility, Reveal, Open, Politician, and X barriers;
+- Shredder, Curse, Swap restrictions, Const Figure, and Copy Cat;
+- W-patterns and abusive lover HP mirroring;
+- turn-start and step-start ordering;
 - simultaneous defeat resulting in a draw.
 
 ## Terminal prototype
@@ -26,7 +29,7 @@ The tests currently cover:
 python main.py
 ```
 
-The terminal interface exercises the implemented core rules. Some cards requiring additional private choices or temporary visibility are intentionally rejected with a clear `NotImplementedError` until their interaction rules are finalized.
+The shared-screen Terminal interface supports public hands and public Reveal information. It prompts for all targets needed by Magic Cards, Foreteller, and tic-tac-toeR, and automatically resolves cursed actions on the affected player's next step.
 
 ## Deterministic rule experiments
 

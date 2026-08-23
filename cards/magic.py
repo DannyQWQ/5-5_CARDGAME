@@ -43,9 +43,9 @@ MAGIC_CARDS = {
     18: _card(18, "Take 3 looks!", "Reveal 3 chosen cards", "reveal", count=3),
     19: _card(19, "the birth of BOB", "Change either player's figure to Bob", "change_figure", figure_id=200),
     20: _card(20, "const figure", "Prevent figure changes for 3 turns", "protect_figure", turns=3),
-    21: _card(21, "shredder", "Both players discard 1 chosen card", "discard"),
+    21: _card(21, "shredder", "Requires another card in both hands; user chooses both discards", "discard"),
     22: _card(22, "REVEAL!", "Reveal all Magic Cards this turn", "reveal_all_magic"),
-    23: _card(23, "This is curse!", "Queue one card from each hand for next turn", "curse"),
+    23: _card(23, "This is curse!", "Force one chosen opponent card on their next step", "curse"),
     24: _card(24, "Frog bomb", "Next turn: change 1 Frog to Bomb", "convert_one", source="frog", target="bomb"),
     25: _card(25, "Swap", "Swap hands with opponent", "swap_hand"),
 }
