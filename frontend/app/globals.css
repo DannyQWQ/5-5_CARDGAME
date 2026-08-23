@@ -126,8 +126,8 @@ body { background:radial-gradient(circle at 50% 40%,#23352c 0,#111b16 48%,#070a0
 .card-frame { aspect-ratio:var(--card-ratio); background-size:cover; background-position:center; background-repeat:no-repeat; }
 .board-wrap { padding:6px; }
 .board-stage { height:100%; }
-.board-grid { flex:none; width:auto; height:auto; grid-template-columns:repeat(5,75px); grid-template-rows:repeat(5,auto); gap:2px; align-self:start; justify-self:center; }
-.board-card { width:75px; height:auto; min-width:75px; min-height:0; z-index:1; }
+.board-grid { --board-card-width:clamp(72px,8.5dvh,96px); --board-card-gap:clamp(6px,.7dvh,8px); flex:none; width:auto; height:auto; grid-template-columns:repeat(5,var(--board-card-width)); grid-template-rows:repeat(5,auto); gap:var(--board-card-gap); align-self:start; justify-self:center; }
+.board-card { width:var(--board-card-width); height:auto; min-width:var(--board-card-width); min-height:0; z-index:1; }
 .board-card:hover,.board-card.selected,.board-card.targeted { z-index:6; }
 .board-card.selected:not(:hover) { transform:none; }
 .hand { min-height:0; align-items:center; }
@@ -154,4 +154,4 @@ body { background:radial-gradient(circle at 50% 40%,#23352c 0,#111b16 48%,#070a0
 .board-status:has(.status-decision) .composition { display:none; }
 .board-status:has(.next-turn) .player-flow { display:none; }
 
-@media(max-width:760px){.mini-card,.empty-slot{flex:none;width:48px}.board-wrap{padding:8px}.board-grid{min-height:0;grid-template-columns:repeat(5,64px);grid-template-rows:repeat(5,auto);gap:3px}.board-card{width:64px;min-width:64px}}
+@media(max-width:760px){.mini-card,.empty-slot{flex:none;width:48px}.board-wrap{padding:8px}.board-grid{--board-card-width:64px;--board-card-gap:6px;min-height:0;grid-template-columns:repeat(5,var(--board-card-width));grid-template-rows:repeat(5,auto);gap:var(--board-card-gap)}.board-card{width:var(--board-card-width);min-width:var(--board-card-width)}}
