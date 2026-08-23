@@ -121,3 +121,28 @@ body { background:radial-gradient(circle at 50% 40%,#23352c 0,#111b16 48%,#070a0
 
 @media(max-width:1050px){.board-stage{grid-template-columns:180px minmax(0,500px)}.table-callout{display:none}}
 @media(max-width:760px){.board-stage{display:flex;flex-direction:column}.board-status{display:grid;grid-template-columns:90px 1fr}.board-status .step-order{grid-template-columns:repeat(6,1fr)}.player-flow{grid-column:1/-1;grid-template-columns:1fr 1fr}.composition{grid-column:1/-1}.composition-head,.composition-row{grid-template-columns:1fr 50px 50px}.next-turn{display:none}.board-grid{min-height:390px}.topbar{grid-template-columns:1fr auto}}
+
+/* The status panel spans the whole board width; the cards sit beneath it. */
+.board-stage { grid-template-columns:minmax(0,1fr); grid-template-rows:132px minmax(0,1fr); gap:10px; }
+.board-status { width:100%; display:grid; grid-template-columns:105px 205px minmax(170px,1fr) 210px; align-items:stretch; gap:12px; padding:10px 12px; }
+.status-head { display:flex; flex-direction:column; justify-content:center; align-items:flex-start; padding:0 12px 0 0; border:0; border-right:1px solid var(--line); }
+.status-head strong { margin-top:4px; font-size:31px; }
+.status-head em { margin-top:9px; font-size:10px; }
+.board-status .step-order { align-self:center; grid-template-columns:repeat(3,1fr); gap:7px; padding-right:12px; border-right:1px solid var(--line); }
+.board-status .step-order i { height:45px; }
+.board-status .step-order i small { font-size:9px; }
+.board-status .step-order i b { font-size:12px; }
+.player-flow { align-self:center; grid-template-columns:1fr; gap:7px; padding-right:12px; border-right:1px solid var(--line); }
+.player-flow>div { min-height:45px; display:flex; flex-direction:column; justify-content:center; padding:7px 10px; }
+.player-flow strong { font-size:13px; }
+.composition { align-self:stretch; padding:0; border:0; display:flex; flex-direction:column; justify-content:center; }
+.composition-head,.composition-row { grid-template-columns:1fr 42px 42px; }
+.composition-head { font-size:9px; }
+.composition-row { min-height:20px; }
+.composition-row span { font-size:11px; }
+.composition-row>b { font-size:15px; }
+.board-status>.next-turn { display:none; }
+.board-grid { width:min(100%,590px); justify-self:center; }
+
+@media(max-width:1050px){.board-stage{grid-template-columns:minmax(0,1fr);grid-template-rows:132px minmax(0,1fr)}.board-status{grid-template-columns:100px 190px minmax(155px,1fr) 200px}}
+@media(max-width:760px){.board-stage{display:flex}.board-status{width:100%;grid-template-columns:90px 1fr;height:auto}.status-head{border-right:0}.board-status .step-order{grid-template-columns:repeat(6,1fr);padding-right:0;border-right:0}.player-flow{grid-column:1/-1;grid-template-columns:1fr 1fr;padding-right:0;border-right:0}.composition{grid-column:1/-1}.board-grid{width:100%}}
