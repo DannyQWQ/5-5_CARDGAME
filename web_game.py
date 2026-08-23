@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import random
+from collections import Counter
 from dataclasses import dataclass
 
 from board import Visibility
@@ -195,6 +196,7 @@ class WebGameSession:
     def state(self):
         current = self.current_player
         forced_index = self.game.forced_magic_index(current) if current and self.phase == "action" else None
+        current_distribution = Counter(cell.card_type for cell in self.game.board.cells)
         return {
             "phase": self.phase,
             "turn": self.game.turn_number,
@@ -208,6 +210,10 @@ class WebGameSession:
                 "barrier_player_ids": list(self.step_start.barrier_player_ids),
             },
             "players": [self._serialize_player(player) for player in self.game.players],
+            "board_distribution": {
+                "current": dict(current_distribution),
+                "next": self.game.resolve_next_distribution(),
+            },
             "board": [self._serialize_cell(cell) for cell in self.game.board.cells],
             "selectable_indices": list(self.game.board.selectable_indices()),
             "log": list(self.log),

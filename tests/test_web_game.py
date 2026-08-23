@@ -28,6 +28,15 @@ class WebGameSessionTests(unittest.TestCase):
         self.session.play_magic(0)
         self.assertEqual(4, player.hp)
 
+    def test_state_exposes_current_and_next_board_composition(self):
+        state = self.session.state()
+        self.assertEqual(25, sum(state["board_distribution"]["current"].values()))
+        self.assertEqual(25, sum(state["board_distribution"]["next"].values()))
+        self.session.game.pending_board_effects = [5]
+        state = self.session.state()
+        self.assertEqual(7, state["board_distribution"]["next"]["bomb"])
+        self.assertEqual(6, state["board_distribution"]["next"]["empty"])
+
     def test_full_hand_magic_open_requests_two_discards_without_mutation(self):
         player = self.session.current_player
         player.hand = [HandCard(1), HandCard(2), HandCard(3)]
