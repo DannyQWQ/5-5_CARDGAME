@@ -11,6 +11,6 @@ All card artwork uses the existing project ratio: **3:4**.
 
 Rendered reference sizes at the standard desktop layout:
 
-- Board card: 72 × 96 CSS px (1.2× the current artwork's native size)
+- Board card: 84 × 112 CSS px at the standard desktop layout. Rows overlap by 14 px so the larger cards still fit on one shared screen.
 - Hand card: 48 × 64 CSS px
 - Detail artwork: 120 × 160 CSS px
