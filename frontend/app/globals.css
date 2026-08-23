@@ -1,6 +1,6 @@
 @import 'tailwindcss';
 
-:root { --ink:#e8e3d8; --red:#b74339; --gold:#c59a39; --teal:#28736d; --line:#3c4842; --p1:#3e8ed0; --p2:#d65048; }
+:root { --ink:#e8e3d8; --red:#b74339; --gold:#c59a39; --teal:#28736d; --line:#3c4842; --p1:#3e8ed0; --p2:#d65048; --card-ratio:5 / 7; }
 * { box-sizing:border-box; }
 html,body { margin:0; min-height:100%; background:#080c0a; color:var(--ink); }
 body,button { font-family:Arial,Helvetica,sans-serif; } button { font:inherit; }
@@ -121,3 +121,18 @@ body { background:radial-gradient(circle at 50% 40%,#23352c 0,#111b16 48%,#070a0
 
 @media(max-width:1050px){.board-stage{grid-template-columns:250px minmax(0,1fr)}.table-callout{display:none}}
 @media(max-width:760px){.board-stage{display:flex;flex-direction:column}.board-status{display:grid;grid-template-columns:90px 1fr}.board-status .step-order{grid-template-columns:repeat(6,1fr)}.player-flow{grid-column:1/-1;grid-template-columns:1fr 1fr}.composition{grid-column:1/-1}.composition-head,.composition-row{grid-template-columns:1fr 50px 50px}.next-turn{display:none}.board-grid{min-height:390px}.topbar{grid-template-columns:1fr auto}}
+
+/* One illustration contract everywhere: 5:7 portrait, scaled without distortion. */
+.card-frame { aspect-ratio:var(--card-ratio); background-size:cover; background-position:center; background-repeat:no-repeat; }
+.board-grid { flex:none; width:auto; height:auto; grid-template-columns:repeat(5,52px); grid-template-rows:repeat(5,auto); align-self:center; justify-self:center; }
+.board-card { width:52px; height:auto; min-width:52px; min-height:0; }
+.hand { min-height:0; align-items:center; }
+.mini-card,.empty-slot { flex:none; width:48px; height:auto; aspect-ratio:var(--card-ratio); }
+.mini-card { grid-template-columns:1fr; grid-template-rows:20px 1fr auto; padding:5px 4px; text-align:center; }
+.mini-card>span { grid-row:auto; justify-self:center; width:19px; height:19px; }
+.mini-card b { align-self:center; font-size:9px; line-height:1.05; }
+.mini-card small { font-size:6px; white-space:nowrap; overflow:hidden; }
+.art-frame { flex:0 0 auto; width:120px; height:auto; align-self:center; }
+.inspector { overflow-y:auto; }
+
+@media(max-width:760px){.mini-card,.empty-slot{flex:none;width:48px}.board-grid{min-height:0;grid-template-columns:repeat(5,52px);grid-template-rows:repeat(5,auto)}}
