@@ -1,6 +1,6 @@
 @import 'tailwindcss';
 
-:root { --ink:#e8e3d8; --red:#b74339; --gold:#c59a39; --teal:#28736d; --line:#3c4842; }
+:root { --ink:#e8e3d8; --red:#b74339; --gold:#c59a39; --teal:#28736d; --line:#3c4842; --p1:#3e8ed0; --p2:#d65048; }
 * { box-sizing:border-box; }
 html,body { margin:0; min-height:100%; background:#080c0a; color:var(--ink); }
 body,button { font-family:Arial,Helvetica,sans-serif; } button { font:inherit; }
@@ -37,3 +37,73 @@ body { background:radial-gradient(circle at 50% 40%,#23352c 0,#111b16 48%,#070a0
 @media(prefers-reduced-motion:reduce){.victory-overlay,.victory-card,.confetti i{animation:none}}
 @media(max-width:1050px){.table-layout{grid-template-columns:1fr 255px}.log-panel{display:none}.player-strip{grid-template-columns:165px 125px 1fr}.figure-chip{display:none}.board-grid{width:min(100%,480px)}}
 @media(max-width:760px){.game-shell{height:auto;min-height:100vh;overflow:auto;padding:7px}.topbar{grid-template-columns:1fr auto}.turn-status{display:none}.player-strip{height:auto;min-height:116px;grid-template-columns:1fr auto}.health{width:110px}.hand{grid-column:1/-1;justify-self:stretch}.mini-card,.empty-slot{flex:1;width:auto}.table-layout{grid-template-columns:1fr;overflow:visible}.inspector{min-height:350px}.board-wrap{min-height:430px;padding:12px 9px}.board-grid{gap:4px}.phase-banner{align-items:stretch;flex-direction:column}.rules-button{display:none}}
+
+/* Table-side information hierarchy: both players can read state without looking away. */
+.table-callout { justify-self:center; color:#8f9b94; font-size:11px; letter-spacing:.16em; }
+.rules-button { font-size:10px; }
+.topbar small { font-size:10px; }
+.player-strip { height:82px; flex-basis:82px; }
+.player-strip.player-p1.is-active { border-color:var(--p1); box-shadow:0 0 0 2px #3e8ed044,0 12px 30px #0007; }
+.player-strip.player-p2.is-active { border-color:var(--p2); box-shadow:0 0 0 2px #d6504844,0 12px 30px #0007; }
+.player-p1 .avatar { background:#234967; }
+.player-p2 .avatar { background:#66302d; }
+.player-p1 .health-track i { background:var(--p1); }
+.player-p2 .health-track i { background:var(--p2); }
+.eyebrow,.panel-label { font-size:10px; }
+.player-identity h2 { font-size:19px; }
+.health>span,.figure-chip span { font-size:10px; }
+.figure-chip strong { font-size:16px; }
+.mini-card b { font-size:11px; line-height:1.12; }
+.mini-card small { font-size:8px; }
+.empty-slot { font-size:9px; }
+.log-panel p { font-size:12px; line-height:1.4; }
+.log-panel time,.legend { font-size:10px; }
+.board-heading h1 { font-size:24px; }
+.board-heading p { font-size:10px; }
+.board-heading p b { font-size:17px; }
+.board-stage { flex:1; min-height:0; display:grid; grid-template-columns:150px minmax(0,520px); justify-content:center; gap:12px; }
+.board-grid { width:100%; margin:0; }
+.board-status { min-height:0; display:flex; flex-direction:column; gap:9px; padding:11px; border:1px solid #ffffff24; border-radius:9px; background:#09100ddb; }
+.status-head { display:grid; grid-template-columns:auto 1fr; align-items:end; column-gap:7px; padding-bottom:9px; border-bottom:1px solid var(--line); }
+.status-head span,.player-flow span,.board-counts>span,.next-turn>span { color:#9da9a2; font-size:9px; font-weight:800; letter-spacing:.14em; }
+.status-head strong { color:white; font:27px Georgia,serif; line-height:.9; }
+.status-head em { grid-column:1/-1; margin-top:7px; color:#ebcd79; font-size:11px; font-style:normal; font-weight:800; letter-spacing:.08em; }
+.board-status .step-order { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
+.board-status .step-order i { width:auto; height:38px; border:1px solid #53605a; border-radius:7px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; color:#adb6b0; background:#151d19; opacity:.72; transform:none; }
+.board-status .step-order i small { font-size:8px; line-height:1; }
+.board-status .step-order i b { font-size:11px; line-height:1; }
+.board-status .step-order i.p1 { border-color:#3e8ed099; color:#9ed3ff; }
+.board-status .step-order i.p2 { border-color:#d6504899; color:#ffaaa5; }
+.board-status .step-order i.current { opacity:1; transform:scale(1.08); color:white; }
+.board-status .step-order i.p1.current { background:var(--p1); border-color:#9ed3ff; box-shadow:0 0 14px #3e8ed0bb; }
+.board-status .step-order i.p2.current { background:var(--p2); border-color:#ffaaa5; box-shadow:0 0 14px #d65048bb; }
+.board-status .step-order i.done { opacity:.38; }
+.player-flow { display:grid; gap:5px; }
+.player-flow>div { padding:7px 8px; border-left:4px solid #657069; border-radius:4px; background:#151d19; }
+.player-flow>div.p1 { border-color:var(--p1); }
+.player-flow>div.p2 { border-color:var(--p2); }
+.player-flow strong { display:block; margin-top:2px; color:white; font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.board-counts { padding-top:8px; border-top:1px solid var(--line); }
+.board-counts p { display:flex; justify-content:space-between; margin:5px 0 0; color:#b8c1bb; font-size:10px; }
+.board-counts p b { color:white; font-size:12px; }
+.next-turn { margin-top:auto; padding:8px; border:1px solid #3c7461; border-radius:6px; background:#15251f; }
+.next-turn strong,.next-turn small { display:block; }
+.next-turn strong { margin-top:4px; color:#bce8d7; font-size:11px; }
+.next-turn small { margin-top:3px; color:#8fb3a6; font-size:9px; line-height:1.25; }
+.card-index { font-size:9px; }
+.back-mark { width:34px; height:34px; font-size:11px; }
+.board-card strong { font-size:11px; line-height:1.1; }
+.board-card small { font-size:8px; }
+.inspector-title span { font-size:9px; }
+.inspector-title h2 { font-size:20px; }
+.inspector-title>b { font-size:11px; }
+.description { font-size:13px; line-height:1.45; }
+.inspector dt { font-size:10px; }
+.inspector dd { font-size:11px; }
+.choice-note { font-size:11px; }
+.target-buttons button,.barrier-controls button,.cancel-action,.primary-action { font-size:10px; }
+.action-note { font-size:9px; }
+.phase-banner span { font-size:11px; }
+
+@media(max-width:1050px){.board-stage{grid-template-columns:136px minmax(0,500px)}.table-callout{display:none}}
+@media(max-width:760px){.board-stage{display:flex;flex-direction:column}.board-status{display:grid;grid-template-columns:90px 1fr}.board-status .step-order{grid-template-columns:repeat(6,1fr)}.player-flow{grid-column:1/-1;grid-template-columns:1fr 1fr}.board-counts,.next-turn{display:none}.board-grid{min-height:390px}.topbar{grid-template-columns:1fr auto}}
