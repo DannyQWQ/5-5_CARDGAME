@@ -24,6 +24,17 @@ type Pending =
 
 const API = 'http://127.0.0.1:8000/api';
 const kindMark: Record<CardKind, string> = { magic: 'M', figure: 'F', bomb: '!', frog: 'R', empty: '·', unknown: '55' };
+const visibilityLabel: Record<Visibility, string> = { face_down: 'Face-down', revealed: 'Revealed', opened: 'Opened' };
+
+function artwork(kind: CardKind, id: number | null) {
+  if (kind === 'unknown') return '/cards/card-back-1.png';
+  if (kind === 'bomb') return '/cards/bomb.png';
+  if (kind === 'frog') return '/cards/frog.png';
+  if (kind === 'figure') return '/cards/figure_test.png';
+  if (kind === 'magic' && id === 1) return '/cards/bubble_milk_tea.png';
+  if (kind === 'magic') return '/cards/empty_magic_card.png';
+  return null;
+}
 
 async function request(path: string, body?: object): Promise<GameState> {
   const response = await fetch(`${API}${path}`, { method: body ? 'POST' : 'GET', headers: body ? { 'Content-Type': 'application/json' } : undefined, body: body ? JSON.stringify(body) : undefined });
@@ -33,7 +44,7 @@ async function request(path: string, body?: object): Promise<GameState> {
 }
 
 function MiniCard({ card, selected, disabled, onClick }: { card: HandCard; selected: boolean; disabled?: boolean; onClick: () => void }) {
-  return <button className={`mini-card ${selected ? 'selected' : ''} ${card.cursed ? 'cursed' : ''}`} disabled={disabled} onClick={onClick}><span>M</span><b>{card.name}</b><small>#{String(card.id).padStart(3, '0')}{card.cursed ? ' · CURSED' : ''}</small></button>;
+  return <button title={card.name} className={`mini-card ${selected ? 'selected' : ''} ${card.cursed ? 'cursed' : ''}`} disabled={disabled} onClick={onClick}><span>M</span><b>{card.name}</b><small>#{String(card.id).padStart(3, '0')}{card.cursed ? ' · CURSED' : ' · MAGIC'}</small></button>;
 }
 
 function PlayerStrip({ player, active, selection, forcedIndex, onCard, onFigure }: { player: Player; active: boolean; selection: Selection | null; forcedIndex: number | null; onCard: (index: number) => void; onFigure: () => void }) {
@@ -41,7 +52,7 @@ function PlayerStrip({ player, active, selection, forcedIndex, onCard, onFigure 
   return <section className={`player-strip ${active ? 'is-active' : ''}`}>
     <div className="player-identity"><span className="avatar">{player.figure.name.slice(0, 1)}</span><div><span className="eyebrow">{active ? 'ACTIVE PLAYER' : 'WAITING'}</span><h2>{player.name}</h2></div></div>
     <div className="health" aria-label={`${player.hp} of ${player.max_hp} health`}><span>HP</span><strong>{player.hp.toFixed(1)}</strong><div className="health-track"><i style={{ width: `${player.hp / player.max_hp * 100}%` }} /></div></div>
-    <button className={`figure-chip ${figureUsable ? 'usable' : ''}`} onClick={onFigure} disabled={!figureUsable}><span>FIGURE</span><strong>{player.figure.name}</strong></button>
+    <button className={`figure-chip ${figureUsable ? 'usable' : ''}`} onClick={onFigure}><span>FIGURE {figureUsable ? '· READY' : ''}</span><strong>{player.figure.name}</strong></button>
     <div className="hand" aria-label={`${player.name} hand`}>{player.hand.map(card => <MiniCard key={card.index} card={card} selected={selection?.source === 'hand' && selection.playerId === player.id && selection.index === card.index} disabled={active && forcedIndex !== null && forcedIndex !== card.index} onClick={() => onCard(card.index)} />)}{Array.from({ length: Math.max(0, 3 - player.hand.length) }, (_, index) => <div className="empty-slot" key={index}>EMPTY</div>)}</div>
   </section>;
 }
@@ -55,16 +66,23 @@ function BoardCard({ card, selected, target, onClick }: { card: BoardCell; selec
 }
 
 function Inspector({ state, selection, pending, busy, onAction, onTarget, onCancel }: { state: GameState; selection: Selection | null; pending: Pending | null; busy: boolean; onAction: () => void; onTarget: (id: 'p1' | 'p2') => void; onCancel: () => void }) {
-  let name = 'Choose a card'; let kind: CardKind = 'unknown'; let description = 'Select a board, hand, or figure card to inspect its real rule text.'; let id: number | null = null; let stateLabel = 'READY';
-  if (selection?.source === 'board') { const card = state.board[selection.index]; name = card.name; kind = card.kind ?? 'unknown'; description = card.description; id = card.id; stateLabel = card.visibility; }
-  else if (selection?.source === 'hand') { const card = state.players.find(item => item.id === selection.playerId)!.hand[selection.index]; if (card) { name = card.name; kind = 'magic'; description = card.description; id = card.id; stateLabel = card.cursed ? 'CURSED' : card.effect_type; } }
-  else if (selection?.source === 'figure') { const figure = state.players.find(item => item.id === selection.playerId)!.figure; name = figure.name; kind = 'figure'; description = figure.description; id = figure.id; stateLabel = figure.used ? 'USED THIS TURN' : 'AVAILABLE'; }
+  let name = 'Choose a card'; let kind: CardKind = 'unknown'; let description = 'Select a board, hand, or figure card to inspect its real rule text.'; let id: number | null = null; let statusLabel = 'Ready';
+  if (selection?.source === 'board') { const card = state.board[selection.index]; name = card.name; kind = card.kind ?? 'unknown'; description = card.description; id = card.id; statusLabel = visibilityLabel[card.visibility]; }
+  else if (selection?.source === 'hand') { const card = state.players.find(item => item.id === selection.playerId)!.hand[selection.index]; if (card) { name = card.name; kind = 'magic'; description = card.description; id = card.id; statusLabel = card.cursed ? 'Cursed' : card.effect_type.replaceAll('_', ' '); } }
+  else if (selection?.source === 'figure') { const figure = state.players.find(item => item.id === selection.playerId)!.figure; name = figure.name; kind = 'figure'; description = figure.description; id = figure.id; statusLabel = figure.used ? 'Used this turn' : 'Available'; }
   const pendingText = pending?.kind === 'reveal' ? `Choose ${pending.count} face-down card(s): ${pending.indices.length}/${pending.count}` : pending?.kind === 'target' ? 'Choose which player becomes the target.' : pending?.kind === 'curse' ? 'Select one card in the opponent’s hand.' : pending?.kind === 'discard' ? 'Select one other card from each hand.' : pending?.kind === 'draw-discard' ? `Discard two hand cards: ${pending.ownIndices.length}/2` : null;
-  return <aside className="inspector"><span className="panel-label">SELECTED CARD</span><div className={`art-frame kind-${kind}`}><span>{kindMark[kind]}</span><small>ARTWORK SLOT</small></div>
+  const selectedBoard = selection?.source === 'board' ? state.board[selection.index] : null;
+  const selectedHandOwner = selection?.source === 'hand' ? state.players.find(player => player.id === selection.playerId) : null;
+  const selectedFigureOwner = selection?.source === 'figure' ? state.players.find(player => player.id === selection.playerId) : null;
+  const canUseFigure = selectedFigureOwner?.id === state.current_player_id && selectedFigureOwner.figure.id === 216 && !selectedFigureOwner.figure.used && state.forced_hand_index === null;
+  const disabled = busy || !selection || state.phase !== 'action' || selectedBoard?.visibility === 'opened' || (selectedHandOwner && selectedHandOwner.id !== state.current_player_id) || (selection?.source === 'hand' && state.forced_hand_index !== null && selection.index !== state.forced_hand_index) || (selection?.source === 'figure' && !canUseFigure);
+  const actionLabel = busy ? 'RESOLVING…' : pending ? 'CONFIRM CHOICES' : selection?.source === 'board' ? selectedBoard?.visibility === 'opened' ? 'ALREADY OPENED' : 'OPEN THIS CARD' : selection?.source === 'hand' ? selectedHandOwner?.id === state.current_player_id ? 'PLAY THIS MAGIC' : 'OPPONENT CARD' : canUseFigure ? 'USE FIGURE ABILITY' : 'VIEW FIGURE ONLY';
+  const art = artwork(kind, id);
+  return <aside className="inspector"><span className="panel-label">CARD DETAILS</span><div className={`art-frame kind-${kind}`} style={art ? { backgroundImage: `linear-gradient(#06100c22,#06100c66), url(${art})` } : undefined}><span>{kindMark[kind]}</span></div>
     <div className="inspector-title"><div><span>{kind.toUpperCase()}</span><h2>{name}</h2></div>{id !== null && <b>#{String(id).padStart(3, '0')}</b>}</div><p className="description">{description}</p>
-    <dl><div><dt>STATE</dt><dd>{stateLabel}</dd></div><div><dt>SOURCE</dt><dd>Python rule core</dd></div></dl>{pendingText && <div className="choice-note">{pendingText}</div>}
+    <dl><div><dt>STATUS</dt><dd>{statusLabel}</dd></div><div><dt>RULE</dt><dd>Resolves after confirmation</dd></div></dl>{pendingText && <div className="choice-note">{pendingText}</div>}
     {pending?.kind === 'target' && <div className="target-buttons">{state.players.map(player => <button key={player.id} className={pending.target === player.id ? 'chosen' : ''} onClick={() => onTarget(player.id)}>{player.name}</button>)}</div>}
-    <button className="primary-action" disabled={busy || !selection} onClick={onAction}>{busy ? 'RESOLVING…' : pending ? 'CONFIRM CHOICES' : 'TAKE ACTION'}</button>{pending && <button className="cancel-action" onClick={onCancel}>CANCEL SELECTION</button>}<p className="action-note">Selecting only shows information. The red button confirms the action.</p>
+    <button className="primary-action" disabled={disabled} onClick={onAction}>{actionLabel}</button>{pending && <button className="cancel-action" onClick={onCancel}>CANCEL SELECTION</button>}<p className="action-note">Selecting is safe. Nothing happens until you confirm here.</p>
   </aside>;
 }
 
@@ -72,6 +90,7 @@ export default function Home() {
   const [state, setState] = useState<GameState | null>(null); const [selection, setSelection] = useState<Selection | null>({ source: 'board', index: 0 }); const [pending, setPending] = useState<Pending | null>(null);
   const [stepTargets, setStepTargets] = useState<number[]>([]); const [barriers, setBarriers] = useState<Record<string, number>>({}); const [barrierOwner, setBarrierOwner] = useState<'p1' | 'p2' | null>(null);
   const [busy, setBusy] = useState(false); const [error, setError] = useState('');
+  const [resetArmed, setResetArmed] = useState(false);
   const acceptState = useCallback((next: GameState) => { setState(next); setPending(null); setStepTargets([]); setBarriers({}); setBarrierOwner(null); setError(''); }, []);
   const call = useCallback(async (path: string, body?: object) => { setBusy(true); setError(''); try { acceptState(await request(path, body)); } catch (problem) { const apiError = problem as { error?: string; code?: string; details?: { board_index?: number } }; if (apiError.code === 'discard_required' && apiError.details?.board_index !== undefined) setPending({ kind: 'draw-discard', boardIndex: apiError.details.board_index, ownIndices: [] }); setError(apiError.error ?? 'The local Python API is not running.'); } finally { setBusy(false); } }, [acceptState]);
   useEffect(() => {
@@ -79,7 +98,7 @@ export default function Home() {
     request('/state').then(next => { if (active) acceptState(next); }).catch(() => { if (active) setError('The local Python API is not running.'); });
     return () => { active = false; };
   }, [acceptState]);
-  const current = state?.players.find(player => player.id === state.current_player_id) ?? null; const opponent = state?.players.find(player => player.id !== state.current_player_id) ?? null; const orderedPlayers = state ? [state.players[1], state.players[0]] : [];
+  const current = state?.players.find(player => player.id === state.current_player_id) ?? null; const orderedPlayers = state ? [state.players[1], state.players[0]] : [];
   const selectedBoard = selection?.source === 'board' ? selection.index : -1;
   function toggle(values: number[], value: number, limit: number) { if (values.includes(value)) return values.filter(item => item !== value); return values.length < limit ? [...values, value] : values; }
   function chooseBoard(index: number) { if (!state) return; const card = state.board[index]; if (state.phase === 'step_start') { if (barrierOwner) { if (card.visibility === 'opened' || card.barrier || Object.values(barriers).includes(index)) return; setBarriers(previous => ({ ...previous, [barrierOwner]: index })); setBarrierOwner(null); return; } if (state.step_start.foreteller_count && card.visibility === 'face_down') setStepTargets(previous => toggle(previous, index, state.step_start.foreteller_count)); return; } if (pending?.kind === 'reveal' && card.visibility === 'face_down') { setPending({ ...pending, indices: toggle(pending.indices, index, pending.count) }); return; } setSelection({ source: 'board', index }); }
@@ -88,13 +107,14 @@ export default function Home() {
     if (selection.source === 'board') return void call('/open', { index: selection.index }); if (selection.source === 'figure') return void call('/activate-figure', {}); if (selection.playerId !== current.id) { setError('Only the active player can use a hand card.'); return; } const card = current.hand[selection.index]; if (!card) return;
     if (card.effect_type === 'reveal') return setPending({ kind: 'reveal', handIndex: card.index, count: Number(card.effect_data.count), indices: [] }); if (card.effect_type === 'change_figure' || card.effect_type === 'protect_figure') return setPending({ kind: 'target', handIndex: card.index }); if (card.effect_type === 'curse') return setPending({ kind: 'curse', handIndex: card.index }); if (card.effect_type === 'discard') return setPending({ kind: 'discard', handIndex: card.index }); void call('/play-magic', { hand_index: card.index, choices: {} }); }
   const stepReady = state ? stepTargets.length === state.step_start.foreteller_count : false; const selectableCount = state?.selectable_indices.length ?? 0; const targeted = useMemo(() => pending?.kind === 'reveal' ? pending.indices : pending?.kind === 'draw-discard' ? [] : stepTargets, [pending, stepTargets]);
+  function resetGame() { if (!resetArmed) { setResetArmed(true); return; } setResetArmed(false); void call('/new-game', {}); }
   if (!state) return <main className="loading-screen"><div><span className="brand-mark">55</span><h1>Connecting to the table…</h1><p>{error || 'Waiting for the local Python game server on port 8000.'}</p><button onClick={() => void call('/state')}>RETRY CONNECTION</button></div></main>;
-  return <main className="game-shell"><header className="topbar"><div><span className="brand-mark">55</span><div><b>FIVE BY FIVE</b><small>LOCAL SHARED TABLE</small></div></div><div className="turn-status"><span>TURN <b>{String(state.turn).padStart(2, '0')}</b></span><span>STEP <b>{Math.min(state.step + 1, 6)} / 6</b></span><div className="step-order">{state.step_order.map((id, index) => <i key={index} className={index === state.step ? 'current' : index < state.step ? 'done' : ''}>{id.toUpperCase()}</i>)}</div></div><button className="rules-button" onClick={() => void call('/new-game', {})}>NEW GAME</button></header>
+  return <main className="game-shell"><header className="topbar"><div><span className="brand-mark">55</span><div><b>FIVE BY FIVE</b><small>ONE SCREEN · TWO PLAYERS</small></div></div><div className="turn-status"><span>TURN <b>{String(state.turn).padStart(2, '0')}</b></span><span>STEP <b>{Math.min(state.step + 1, 6)} / 6</b></span><div className="step-order">{state.step_order.map((id, index) => <i key={index} className={index === state.step ? 'current' : index < state.step ? 'done' : ''}>{id.toUpperCase()}</i>)}</div></div><button className={`rules-button ${resetArmed ? 'reset-armed' : ''}`} onClick={resetGame}>{resetArmed ? 'CONFIRM RESET' : 'RESET GAME'}</button></header>
     {state.phase === 'step_start' && <section className="phase-banner"><div><b>STEP-START CHOICES</b><span>{state.step_start.foreteller_count ? `Foreteller must reveal ${state.step_start.foreteller_count} cards (${stepTargets.length}/${state.step_start.foreteller_count}).` : 'Optional X barriers may be placed now.'}</span></div><div className="barrier-controls">{state.step_start.barrier_player_ids.map(id => <button key={id} className={barriers[id] !== undefined ? 'chosen' : ''} onClick={() => setBarrierOwner(id)}>{id.toUpperCase()} X: {barriers[id] ?? 'SKIP'}</button>)}</div><button disabled={!stepReady || busy} onClick={() => void call('/begin-step', { foreteller_indices: stepTargets, barrier_indices: barriers })}>CONFIRM</button></section>}{error && <div className="error-banner">{error}<button onClick={() => setError('')}>×</button></div>}
     <PlayerStrip player={orderedPlayers[0]} active={orderedPlayers[0].id === state.current_player_id} selection={selection} forcedIndex={orderedPlayers[0].id === state.current_player_id ? state.forced_hand_index : null} onCard={index => chooseHand(orderedPlayers[0].id, index)} onFigure={() => setSelection({ source: 'figure', playerId: orderedPlayers[0].id })} />
-    <div className="table-layout"><aside className="log-panel"><span className="panel-label">ACTION LOG · LIVE</span><ol>{state.log.slice(-8).reverse().map((entry, index) => <li className={index === 0 ? 'latest' : ''} key={`${entry}-${index}`}><time>{state.turn}:{Math.max(1, state.step + 1)}</time><p>{entry}</p></li>)}</ol><div className="legend"><span><i className="dot revealed-dot" />Revealed</span><span><i className="dot opened-dot" />Opened</span><span><i className="x-mini">X</i>Blocked</span></div></aside>
-      <section className="board-wrap"><div className="board-heading"><div><span className="panel-label">THE TABLE · PYTHON STATE</span><h1>{state.phase === 'game_over' ? state.result === 'draw' ? 'Draw game.' : `${state.result} wins.` : pending || state.phase === 'step_start' ? 'Choose the highlighted targets.' : `${current?.name ?? 'No player'}, choose your risk.`}</h1></div><p><b>{selectableCount}</b> selectable</p></div><div className="board-grid">{state.board.map(card => <BoardCard key={card.index} card={card} selected={card.index === selectedBoard} target={targeted.includes(card.index) || Object.values(barriers).includes(card.index)} onClick={() => chooseBoard(card.index)} />)}</div></section>
+    <div className="table-layout"><aside className="log-panel"><span className="panel-label">WHAT JUST HAPPENED</span><ol>{state.log.slice(-6).reverse().map((entry, index) => <li className={index === 0 ? 'latest' : ''} key={`${entry}-${index}`}><time>{index === 0 ? 'NOW' : `${index} AGO`}</time><p>{entry}</p></li>)}</ol><div className="legend"><span><i className="dot revealed-dot" />Visible, not triggered</span><span><i className="dot opened-dot" />Opened and resolved</span><span><i className="x-mini">X</i>Cannot be opened</span></div></aside>
+      <section className="board-wrap"><div className="board-heading"><div><span className="panel-label">SHARED TABLE</span><h1>{state.phase === 'game_over' ? state.result === 'draw' ? 'Draw game.' : `${state.result} wins.` : pending || state.phase === 'step_start' ? 'Choose the highlighted targets.' : `${current?.name ?? 'No player'}, choose your risk.`}</h1></div><p><b>{selectableCount}</b> can open</p></div><div className="board-grid">{state.board.map(card => <BoardCard key={card.index} card={card} selected={card.index === selectedBoard} target={targeted.includes(card.index) || Object.values(barriers).includes(card.index)} onClick={() => chooseBoard(card.index)} />)}</div></section>
       <Inspector state={state} selection={selection} pending={pending} busy={busy} onAction={() => void takeAction()} onTarget={id => pending?.kind === 'target' && setPending({ ...pending, target: id })} onCancel={() => { setPending(null); setError(''); }} /></div>
-    <PlayerStrip player={orderedPlayers[1]} active={orderedPlayers[1].id === state.current_player_id} selection={selection} forcedIndex={orderedPlayers[1].id === state.current_player_id ? state.forced_hand_index : null} onCard={index => chooseHand(orderedPlayers[1].id, index)} onFigure={() => setSelection({ source: 'figure', playerId: orderedPlayers[1].id })} /><footer>LOCAL GAME CORE CONNECTED · {opponent ? `${current?.name} vs ${opponent.name}` : 'GAME OVER'}</footer>
+    <PlayerStrip player={orderedPlayers[1]} active={orderedPlayers[1].id === state.current_player_id} selection={selection} forcedIndex={orderedPlayers[1].id === state.current_player_id ? state.forced_hand_index : null} onCard={index => chooseHand(orderedPlayers[1].id, index)} onFigure={() => setSelection({ source: 'figure', playerId: orderedPlayers[1].id })} />
   </main>;
 }
