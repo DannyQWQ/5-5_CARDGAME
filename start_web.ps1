@@ -2,7 +2,6 @@ $ErrorActionPreference = 'Stop'
 
 $projectRoot = $PSScriptRoot
 $frontendRoot = Join-Path $projectRoot 'frontend'
-$pythonCommand = Get-Command python -ErrorAction Stop
 $pnpmCommand = Get-Command pnpm -ErrorAction SilentlyContinue
 
 if (-not $pnpmCommand) {
@@ -17,13 +16,5 @@ if (-not $pnpmCommand) {
     $pnpmPath = $pnpmCommand.Source
 }
 
-$apiProcess = Start-Process -FilePath $pythonCommand.Source -ArgumentList 'web_api.py' -WorkingDirectory $projectRoot -WindowStyle Hidden -PassThru
-try {
-    Write-Host 'Five by Five is starting at http://localhost:3000/'
-    & $pnpmPath --dir $frontendRoot dev
-} finally {
-    if (-not $apiProcess.HasExited) {
-        Stop-Process -Id $apiProcess.Id
-    }
-}
-
+Write-Host 'Five by Five is starting at http://localhost:3000/'
+& $pnpmPath --dir $frontendRoot dev

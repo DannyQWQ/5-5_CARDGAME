@@ -1,22 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { BrowserGameSession, GameActionError } from './game-engine';
+import type { BoardCell, BoardKind, CardKind, GameState, HandCard, Player, PlayerId, Visibility } from './game-engine';
 
-type Visibility = 'face_down' | 'revealed' | 'opened';
-type CardKind = 'magic' | 'figure' | 'bomb' | 'frog' | 'empty' | 'unknown';
-type BoardKind = Exclude<CardKind, 'unknown'>;
-type BoardDistribution = Record<BoardKind, number>;
-type HandCard = { index: number; id: number; name: string; description: string; effect_type: string; effect_data: Record<string, string | number>; cursed: boolean };
-type Figure = { id: number; name: string; description: string; used: boolean };
-type Player = { id: 'p1' | 'p2'; name: string; hp: number; max_hp: number; figure: Figure; hand: HandCard[] };
-type BoardCell = { index: number; visibility: Visibility; barrier: boolean; kind: CardKind | null; id: number | null; name: string; description: string; effect_type?: string };
-type GameState = {
-  phase: 'setup' | 'step_start' | 'action' | 'turn_end' | 'game_over'; turn: number; step: number;
-  step_order: ('p1' | 'p2')[]; current_player_id: 'p1' | 'p2' | null; forced_hand_index: number | null; result: string | null;
-  step_start: { foreteller_count: number; barrier_player_ids: ('p1' | 'p2')[] };
-  players: Player[]; board_distribution: { current: BoardDistribution; next: BoardDistribution }; board: BoardCell[]; selectable_indices: number[]; log: string[];
-};
-type Selection = { source: 'board'; index: number } | { source: 'hand'; playerId: 'p1' | 'p2'; index: number } | { source: 'figure'; playerId: 'p1' | 'p2' };
+type Selection = { source: 'board'; index: number } | { source: 'hand'; playerId: PlayerId; index: number } | { source: 'figure'; playerId: PlayerId };
 type Pending =
   | { kind: 'reveal'; handIndex: number; count: number; indices: number[] }
   | { kind: 'line'; handIndex: number; anchorIndex?: number; axis?: 'row' | 'column' }
@@ -25,26 +13,30 @@ type Pending =
   | { kind: 'discard'; handIndex: number; ownIndex?: number; opponentIndex?: number }
   | { kind: 'draw-discard'; boardIndex: number; ownIndices: number[] };
 
-const API = 'http://127.0.0.1:8000/api';
+const gameSession = new BrowserGameSession();
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 const kindMark: Record<CardKind, string> = { magic: 'M', figure: 'F', bomb: '!', frog: 'R', empty: '·', unknown: '55' };
 const visibilityLabel: Record<Visibility, string> = { face_down: 'Face-down', revealed: 'Revealed', opened: 'Opened' };
 const compositionKinds: { key: BoardKind; label: string }[] = [{ key: 'empty', label: 'Empty' }, { key: 'bomb', label: 'Bomb' }, { key: 'frog', label: 'Frog' }, { key: 'magic', label: 'Magic' }, { key: 'figure', label: 'Figure' }];
 
 function artwork(kind: CardKind, id: number | null) {
-  if (kind === 'unknown') return '/cards/card-back-1.png';
-  if (kind === 'bomb') return '/cards/bomb.png';
-  if (kind === 'frog') return '/cards/frog.png';
-  if (kind === 'figure') return '/cards/figure_test.png';
-  if (kind === 'magic' && id === 1) return '/cards/bubble_milk_tea.png';
-  if (kind === 'magic') return '/cards/empty_magic_card.png';
+  if (kind === 'unknown') return `${basePath}/cards/card-back-1.png`;
+  if (kind === 'bomb') return `${basePath}/cards/bomb.png`;
+  if (kind === 'frog') return `${basePath}/cards/frog.png`;
+  if (kind === 'figure') return `${basePath}/cards/figure_test.png`;
+  if (kind === 'magic' && id === 1) return `${basePath}/cards/bubble_milk_tea.png`;
+  if (kind === 'magic') return `${basePath}/cards/empty_magic_card.png`;
   return null;
 }
 
 async function request(path: string, body?: object): Promise<GameState> {
-  const response = await fetch(`${API}${path}`, { method: body ? 'POST' : 'GET', headers: body ? { 'Content-Type': 'application/json' } : undefined, body: body ? JSON.stringify(body) : undefined });
-  const data = await response.json();
-  if (!response.ok) throw data;
-  return data;
+  await Promise.resolve();
+  try {
+    return gameSession.dispatch(path, (body ?? {}) as Record<string, unknown>);
+  } catch (problem) {
+    if (problem instanceof GameActionError) throw { error: problem.message, code: problem.code, details: problem.details };
+    throw problem;
+  }
 }
 
 function MiniCard({ card, selected, disabled, onClick }: { card: HandCard; selected: boolean; disabled?: boolean; onClick: () => void }) {
@@ -95,27 +87,27 @@ function Inspector({ state, selection, pending, busy, onAction, onTarget, onAxis
 
 export default function Home() {
   const [state, setState] = useState<GameState | null>(null); const [selection, setSelection] = useState<Selection | null>({ source: 'board', index: 0 }); const [pending, setPending] = useState<Pending | null>(null);
-  const [stepTargets, setStepTargets] = useState<number[]>([]); const [barriers, setBarriers] = useState<Record<string, number>>({}); const [barrierOwner, setBarrierOwner] = useState<'p1' | 'p2' | null>(null);
+  const [stepTargets, setStepTargets] = useState<number[]>([]); const [barriers, setBarriers] = useState<Record<string, number>>({}); const [barrierOwner, setBarrierOwner] = useState<PlayerId | null>(null);
   const [busy, setBusy] = useState(false); const [error, setError] = useState('');
   const [resetArmed, setResetArmed] = useState(false);
   const acceptState = useCallback((next: GameState) => { setState(next); setPending(null); setStepTargets([]); setBarriers({}); setBarrierOwner(null); setError(''); }, []);
-  const call = useCallback(async (path: string, body?: object) => { setBusy(true); setError(''); try { acceptState(await request(path, body)); } catch (problem) { const apiError = problem as { error?: string; code?: string; details?: { board_index?: number } }; if (apiError.code === 'discard_required' && apiError.details?.board_index !== undefined) setPending({ kind: 'draw-discard', boardIndex: apiError.details.board_index, ownIndices: [] }); setError(apiError.error ?? 'The local Python API is not running.'); } finally { setBusy(false); } }, [acceptState]);
+  const call = useCallback(async (path: string, body?: object) => { setBusy(true); setError(''); try { acceptState(await request(path, body)); } catch (problem) { const gameError = problem as { error?: string; code?: string; details?: { board_index?: number } }; if (gameError.code === 'discard_required' && gameError.details?.board_index !== undefined) setPending({ kind: 'draw-discard', boardIndex: gameError.details.board_index, ownIndices: [] }); setError(gameError.error ?? 'The browser could not complete that action.'); } finally { setBusy(false); } }, [acceptState]);
   useEffect(() => {
     let active = true;
-    request('/state').then(next => { if (active) acceptState(next); }).catch(() => { if (active) setError('The local Python API is not running.'); });
+    request('/state').then(next => { if (active) acceptState(next); }).catch(() => { if (active) setError('The browser could not prepare the game.'); });
     return () => { active = false; };
   }, [acceptState]);
   const current = state?.players.find(player => player.id === state.current_player_id) ?? null; const orderedPlayers = state ? [state.players[1], state.players[0]] : [];
   const selectedBoard = selection?.source === 'board' ? selection.index : -1;
   function toggle(values: number[], value: number, limit: number) { if (values.includes(value)) return values.filter(item => item !== value); return values.length < limit ? [...values, value] : values; }
   function chooseBoard(index: number) { if (!state) return; const card = state.board[index]; if (state.phase === 'step_start') { if (barrierOwner) { if (card.visibility === 'opened' || card.barrier || Object.values(barriers).includes(index)) return; setBarriers(previous => ({ ...previous, [barrierOwner]: index })); setBarrierOwner(null); return; } if (state.step_start.foreteller_count && card.visibility === 'face_down') setStepTargets(previous => toggle(previous, index, state.step_start.foreteller_count)); return; } if (pending?.kind === 'reveal' && card.visibility === 'face_down') { setPending({ ...pending, indices: toggle(pending.indices, index, pending.count) }); return; } if (pending?.kind === 'line' && card.visibility !== 'opened') { setPending({ ...pending, anchorIndex: index, axis: undefined }); return; } setSelection({ source: 'board', index }); }
-  function chooseHand(playerId: 'p1' | 'p2', index: number) { if (!state) return; if (pending?.kind === 'curse' && playerId !== state.current_player_id) { setPending({ ...pending, opponentIndex: index }); return; } if (pending?.kind === 'discard') { if (playerId === state.current_player_id && index !== pending.handIndex) setPending({ ...pending, ownIndex: index }); if (playerId !== state.current_player_id) setPending({ ...pending, opponentIndex: index }); return; } if (pending?.kind === 'draw-discard' && playerId === state.current_player_id) { setPending({ ...pending, ownIndices: toggle(pending.ownIndices, index, 2) }); return; } setSelection({ source: 'hand', playerId, index }); }
+  function chooseHand(playerId: PlayerId, index: number) { if (!state) return; if (pending?.kind === 'curse' && playerId !== state.current_player_id) { setPending({ ...pending, opponentIndex: index }); return; } if (pending?.kind === 'discard') { if (playerId === state.current_player_id && index !== pending.handIndex) setPending({ ...pending, ownIndex: index }); if (playerId !== state.current_player_id) setPending({ ...pending, opponentIndex: index }); return; } if (pending?.kind === 'draw-discard' && playerId === state.current_player_id) { setPending({ ...pending, ownIndices: toggle(pending.ownIndices, index, 2) }); return; } setSelection({ source: 'hand', playerId, index }); }
   async function takeAction() { if (!state || !selection || !current) return; if (pending) { if (pending.kind === 'reveal' && pending.indices.length === pending.count) return void call('/play-magic', { hand_index: pending.handIndex, choices: { indices: pending.indices } }); if (pending.kind === 'line' && pending.anchorIndex !== undefined && pending.axis) return void call('/play-magic', { hand_index: pending.handIndex, choices: { axis: pending.axis, line: pending.axis === 'row' ? Math.floor(pending.anchorIndex / 5) : pending.anchorIndex % 5 } }); if (pending.kind === 'target' && pending.target) return void call('/play-magic', { hand_index: pending.handIndex, choices: { target: pending.target } }); if (pending.kind === 'curse' && pending.opponentIndex !== undefined) return void call('/play-magic', { hand_index: pending.handIndex, choices: { opponent_index: pending.opponentIndex } }); if (pending.kind === 'discard' && pending.ownIndex !== undefined && pending.opponentIndex !== undefined) return void call('/play-magic', { hand_index: pending.handIndex, choices: { own_index: pending.ownIndex, opponent_index: pending.opponentIndex } }); if (pending.kind === 'draw-discard' && pending.ownIndices.length === 2) return void call('/open', { index: pending.boardIndex, discard_indices: pending.ownIndices }); setError('Finish the highlighted choice first.'); return; }
     if (selection.source === 'board') return void call('/open', { index: selection.index }); if (selection.source === 'figure') return void call('/activate-figure', {}); if (selection.playerId !== current.id) { setError('Only the active player can use a hand card.'); return; } const card = current.hand[selection.index]; if (!card) return;
     if (card.effect_type === 'reveal') return setPending({ kind: 'reveal', handIndex: card.index, count: Number(card.effect_data.count), indices: [] }); if (card.effect_type === 'reveal_line') return setPending({ kind: 'line', handIndex: card.index }); if (card.effect_type === 'change_figure' || card.effect_type === 'protect_figure') return setPending({ kind: 'target', handIndex: card.index }); if (card.effect_type === 'curse') return setPending({ kind: 'curse', handIndex: card.index }); if (card.effect_type === 'discard') return setPending({ kind: 'discard', handIndex: card.index }); void call('/play-magic', { hand_index: card.index, choices: {} }); }
   const stepReady = state ? stepTargets.length === state.step_start.foreteller_count : false; const selectableCount = state?.selectable_indices.length ?? 0; const targeted = useMemo(() => pending?.kind === 'reveal' ? pending.indices : pending?.kind === 'line' && pending.anchorIndex !== undefined && pending.axis ? state!.board.filter(card => card.visibility === 'face_down' && (pending.axis === 'row' ? Math.floor(card.index / 5) === Math.floor(pending.anchorIndex! / 5) : card.index % 5 === pending.anchorIndex! % 5)).map(card => card.index) : pending?.kind === 'line' && pending.anchorIndex !== undefined ? [pending.anchorIndex] : pending?.kind === 'draw-discard' ? [] : stepTargets, [pending, state, stepTargets]);
   function resetGame() { if (!resetArmed) { setResetArmed(true); return; } setResetArmed(false); void call('/new-game', {}); }
-  if (!state) return <main className="loading-screen"><div><span className="brand-mark">55</span><h1>Connecting to the table…</h1><p>{error || 'Waiting for the local Python game server on port 8000.'}</p><button onClick={() => void call('/state')}>RETRY CONNECTION</button></div></main>;
+  if (!state) return <main className="loading-screen"><div><span className="brand-mark">55</span><h1>Setting the table…</h1><p>{error || 'Preparing a private game in this browser.'}</p><button onClick={() => void call('/state')}>RETRY</button></div></main>;
   const nextStepIndex = state.phase === 'turn_end' || state.step + 1 >= state.step_order.length ? 0 : state.step + 1;
   const nextPlayerId = state.phase === 'game_over' ? null : state.step_order[nextStepIndex];
   const phaseLabel = state.phase === 'turn_end' ? 'TURN REVIEW' : state.phase === 'step_start' ? 'STEP SETUP' : state.phase === 'game_over' ? 'GAME OVER' : 'CHOOSE ACTION';
